@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MovieAI — Describe what you want and discover personalized Indian movies.">
+    <title>MovieAI — Describe What You Want</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="cinema-subpage">
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+    <div class="ambient ambient-subpage" aria-hidden="true"></div>
+
+    <!-- Decorative Floating Movie Poster Showcase -->
+    <aside class="cinema-poster-flair cinema-poster-left" aria-hidden="true">
+        <div class="decorative-poster-card card-top-left" style="--rotation: -5deg; --float-delay: 0s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie2.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">star</span> BLOCKBUSTER</span>
+        </div>
+        <div class="decorative-poster-card card-bottom-left" style="--rotation: 4deg; --float-delay: 1.5s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie4.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">workspace_premium</span> CLASSIC</span>
+        </div>
+    </aside>
+
+    <aside class="cinema-poster-flair cinema-poster-right" aria-hidden="true">
+        <div class="decorative-poster-card card-top-right" style="--rotation: 4deg; --float-delay: 0.8s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie8.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">local_fire_department</span> EPIC TALE</span>
+        </div>
+        <div class="decorative-poster-card card-bottom-right" style="--rotation: -4deg; --float-delay: 2.2s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie6.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">favorite</span> FEEL-GOOD</span>
+        </div>
+    </aside>
+
+    <main class="recommendation-page">
+        <!-- Film Strip Header Accent -->
+        <div class="subpage-film-strip" aria-hidden="true">
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">movie</span>
+                <span>SCENE: 01</span>
+            </div>
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">auto_awesome</span>
+                <span>TAKE: AI-PROMPT</span>
+            </div>
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">explore</span>
+                <span>ROLL: DISCOVERY</span>
+            </div>
+            <div class="strip-item strip-highlight">
+                <span>INDIAN CINEMA • INFINITE STORIES</span>
+            </div>
+        </div>
+
+        <header class="recommendation-header">
+            <a
+                href="index.html#nextPage"
+                class="recommendation-back"
+                id="backToModesBtn"
+                aria-label="Back to mode selection"
+            >
+                <span class="material-symbols-rounded back-arrow-icon" aria-hidden="true">arrow_back</span>
+                <span>Choose another way</span>
+            </a>
+
+            <div class="recommendation-brand">
+                <span class="brand-sub-badge">01 / DISCOVER</span>
+                <span class="brand-text">MOVIE<span class="brand-ai-accent">AI</span></span>
+            </div>
+        </header>
+
+        <section class="recommendation-main">
+            <div class="recommendation-heading">
+                <div class="heading-badge-wrap">
+                    <span class="material-symbols-rounded heading-reel-icon" aria-hidden="true">auto_awesome</span>
+                    <span class="recommendation-eyebrow">
+                        NATURAL LANGUAGE RECOMMENDATION
+                    </span>
+                </div>
+
+                <h1>
+                    Describe what you <span class="gradient-text">want.</span>
+                </h1>
+
+                <p>
+                    Tell MovieAI your mood, favorite stars, genre, or the kind of story you crave today.
+                </p>
+            </div>
+
+            <!-- Quick Mood / Genre Prompt Chips with Google Icons -->
+            <div class="prompt-chips-wrapper">
+                <div class="chips-header">
+                    <span class="material-symbols-rounded chips-icon" aria-hidden="true">auto_awesome</span>
+                    <span class="chips-title">Quick Movie Inspirations:</span>
+                    <small class="chips-hint">(Click to try)</small>
+                </div>
+                <div class="prompt-chips" role="toolbar" aria-label="Suggested movie prompts">
+                    <button type="button" class="prompt-chip" data-prompt="I want a Telugu feel-good romantic family entertainer with comedy and great music">
+                        <span class="material-symbols-rounded chip-icon">favorite</span> Feel-Good Romance
+                    </button>
+                    <button type="button" class="prompt-chip" data-prompt="High-voltage mass action thriller with goosebumps elevation scenes and punch dialogues">
+                        <span class="material-symbols-rounded chip-icon">local_fire_department</span> Mass Action Thriller
+                    </button>
+                    <button type="button" class="prompt-chip" data-prompt="A gripping murder mystery whodunit with unexpected plot twists and suspense">
+                        <span class="material-symbols-rounded chip-icon">visibility</span> Suspense Mystery
+                    </button>
+                    <button type="button" class="prompt-chip" data-prompt="Emotional sports underdog drama about dedication, struggle, and triumph">
+                        <span class="material-symbols-rounded chip-icon">trophy</span> Inspiring Sports Drama
+                    </button>
+                    <button type="button" class="prompt-chip" data-prompt="Epic Indian mythological fantasy with grand visuals, folklore, and heroism">
+                        <span class="material-symbols-rounded chip-icon">star</span> Mythological Epic
+                    </button>
+                    <button type="button" class="prompt-chip" data-prompt="A laugh-out-loud 90s style vintage comedy drama for a lighthearted weekend">
+                        <span class="material-symbols-rounded chip-icon">theater_comedy</span> Vintage Comedy
+                    </button>
+                </div>
+            </div>
+
+            <form
+                id="recommendationForm"
+                class="recommendation-form"
+            >
+                <div class="input-glow-card">
+                    <div class="textarea-header-bar">
+                        <span class="textarea-label-pill">
+                            <span class="pill-dot"></span>
+                            AI Story Prompt
+                        </span>
+                        <div class="textarea-actions">
+                            <span id="charCounter" class="char-counter">0 / 500</span>
+                            <button type="button" id="clearInputBtn" class="clear-btn" title="Clear text" aria-label="Clear text" hidden>
+                                <span class="material-symbols-rounded">close</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <textarea
+                        id="recommendationInput"
+                        class="recommendation-input"
+                        rows="4"
+                        maxlength="500"
+                        placeholder="Try: I want a Telugu romantic feel-good movie with great music for the weekend..."
+                        aria-label="Describe what kind of movie you want"
+                    ></textarea>
+
+                    <div class="recommendation-form-footer">
+                        <div class="recommendation-hint-group">
+                            <span class="material-symbols-rounded hint-icon" aria-hidden="true">lightbulb</span>
+                            <span class="recommendation-hint">
+                                Mention a <strong>mood</strong>, <strong>genre</strong>, <strong>language</strong>, <strong>actor</strong>, <strong>year</strong>, or <strong>vibe</strong>.
+                            </span>
+                        </div>
+
+                        <button
+                            type="submit"
+                            id="recommendationButton"
+                            class="recommendation-button"
+                        >
+                            <span class="button-text">Find my movies</span>
+                            <span class="material-symbols-rounded button-arrow" aria-hidden="true">arrow_forward</span>
+                            <span class="button-glow-ring" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <section
+                id="recommendationResults"
+                class="recommendation-results"
+                aria-live="polite"
+            ></section>
+        </section>
+    </main>
+
+    <script src="recommendation.js"></script>
+</body>
+</html>

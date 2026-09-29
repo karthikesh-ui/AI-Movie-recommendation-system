@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MovieAI — AI-powered Indian movie discovery.">
+    <title>MovieAI — Indian Cinema Discovery</title>
+    <script>
+        if (window.location.hash === "#nextPage" || window.location.search.includes("mode=select")) {
+            document.documentElement.classList.add("direct-mode");
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <!-- =====================================================
+         F2 — CINEMATIC LANDING PAGE
+         ===================================================== -->
+    <main class="intro-page" id="introPage">
+        <section class="intro-frame">
+
+            <div class="film-strip film-strip-top" aria-hidden="true">
+                <div class="film-frame">01</div>
+                <div class="film-frame">02</div>
+                <div class="film-frame">03</div>
+                <div class="film-frame">04</div>
+                <div class="film-frame">05</div>
+            </div>
+
+            <div class="film-strip film-strip-bottom" aria-hidden="true">
+                <div class="film-frame">06</div>
+                <div class="film-frame">07</div>
+                <div class="film-frame">08</div>
+                <div class="film-frame">09</div>
+                <div class="film-frame">10</div>
+            </div>
+
+            <div class="hand-note note-left" aria-hidden="true">
+                <span>Good.</span>
+                <span>Movies</span>
+                <span>Better</span>
+                <span>Days</span>
+                <small>♡</small>
+            </div>
+
+            <div class="corner-label" aria-hidden="true">
+                <span>INDIAN CINEMA</span>
+                <span>INFINITE STORIES</span>
+                <i></i>
+            </div>
+
+            <div class="cinema-camera" aria-hidden="true">
+                <div class="camera-reel reel-large">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <div class="camera-reel reel-small">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <div class="camera-body">
+                    <div class="camera-detail"></div>
+                    <div class="camera-knob"></div>
+                    <div class="camera-side-line"></div>
+                </div>
+
+                <div class="camera-lens">
+                    <div></div>
+                </div>
+
+                <div class="camera-light" id="cameraLight">
+                    <div class="projector-glow"></div>
+                </div>
+
+                <div class="camera-tripod">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="intro-movie-gallery" aria-hidden="true">
+                <div class="movie-image movie-image-1">
+                    <img src="assets/movie1.jpg" alt="">
+                </div>
+
+                <div class="movie-image movie-image-2">
+                    <img src="assets/movie3.jpg" alt="">
+                </div>
+
+                <div class="movie-image movie-image-3">
+                    <img src="assets/movie10.jpg" alt="">
+                </div>
+
+                <div class="movie-image movie-image-4">
+                    <img src="assets/movie7.jpg" alt="">
+                </div>
+
+                <div class="movie-image movie-image-5">
+                    <img src="assets/movie9.jpg" alt="">
+                </div>
+            </div>
+
+            <div class="brand-area">
+                <div class="welcome-line">
+                    <span></span>
+                    <p>WELCOME TO</p>
+                    <span></span>
+                </div>
+
+                <h1 class="brand-title">
+                    <span>M</span>
+
+                    <span class="reel-letter">
+                        <span class="brand-reel">
+                            <i></i>
+                            <i></i>
+                            <i></i>
+                            <i></i>
+                            <i></i>
+                        </span>
+                    </span>
+
+                    <span>V</span>
+                    <span>I</span>
+                    <span>E</span>
+                    <span class="brand-ai">AI</span>
+                </h1>
+
+                <div class="brand-subtitle">
+                    <span>AI — MOVIE RECOMMENDATIONS</span>
+                    <span>SYSTEM</span>
+                </div>
+
+                <div class="mini-features">
+                    <div class="mini-feature">
+                        <div class="mini-icon">🍿</div>
+                        <div>
+                            <strong>DISCOVER</strong>
+                            <small>NEW STORIES</small>
+                        </div>
+                    </div>
+
+                    <div class="feature-divider" aria-hidden="true"></div>
+
+                    <div class="mini-feature">
+                        <div class="mini-icon">🎬</div>
+                        <div>
+                            <strong>EXPLORE</strong>
+                            <small>YOUR TASTE</small>
+                        </div>
+                    </div>
+
+                    <div class="feature-divider" aria-hidden="true"></div>
+
+                    <div class="mini-feature">
+                        <div class="mini-icon">🎟️</div>
+                        <div>
+                            <strong>ENJOY</strong>
+                            <small>INDIAN CINEMA</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cta-safe-zone">
+                    <div class="cta-note">
+                        <span class="curved-arrow">↘</span>
+                        <em>Click to start the show!</em>
+                    </div>
+
+                    <button
+                        class="enter-button"
+                        id="enterButton"
+                        type="button"
+                        aria-label="Enter the world of cinema"
+                    >
+                        <span>LET'S ENTER INTO THE WORLD OF CINEMA</span>
+                        <span class="enter-arrow" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="hand-note note-right" aria-hidden="true">
+                <span>Same</span>
+                <span>Stories</span>
+                <span>New</span>
+                <span>Perspectives</span>
+                <i></i>
+            </div>
+
+            <div class="bottom-label bottom-left" aria-hidden="true">
+                <span>FROM CLASSICS TO</span>
+                <span>TOMORROW'S FAVORITES</span>
+            </div>
+
+            <div class="bottom-label bottom-right" aria-hidden="true">
+                <i></i>
+                <span>CINEMA CONNECTS US</span>
+            </div>
+
+            <div class="clapperboard" aria-hidden="true">
+                <div class="clapper-top">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+
+                <div class="clapper-body">
+                    <div>
+                        <small>SCENE</small>
+                        <strong>Movies</strong>
+                    </div>
+
+                    <div>
+                        <small>TAKE</small>
+                        <strong>Emotions</strong>
+                    </div>
+
+                    <div>
+                        <small>ROLL</small>
+                        <strong>Life</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="transition-light"
+                id="transitionLight"
+                aria-hidden="true"
+            ></div>
+        </section>
+    </main>
+
+    <!-- =====================================================
+         F3 — RECOMMENDATION MODE SELECTION
+         ===================================================== -->
+    <section
+        class="next-page"
+        id="nextPage"
+        aria-labelledby="modePageTitle"
+    >
+        <div class="mode-page">
+
+            <header class="mode-page-top">
+                <span class="mode-brand">MOVIEAI</span>
+
+                <span class="mode-index">
+                    01 / DISCOVER
+                </span>
+            </header>
+
+            <section class="mode-heading">
+                <span class="mode-eyebrow">
+                    YOUR CINEMA JOURNEY
+                </span>
+
+                <h2 id="modePageTitle">
+                    Choose how you want
+                    <span>to discover.</span>
+                </h2>
+
+                <p>
+                    Start with a feeling or start with a movie.
+                </p>
+            </section>
+
+            <section
+                class="mode-selection-stage"
+                id="modeSelectionStage"
+                aria-label="Movie discovery modes"
+            >
+
+                <!-- =================================================
+                     MODE 1 — NATURAL LANGUAGE RECOMMENDATION
+                     ================================================= -->
+                <button
+                    class="mode-card mode-card-recommendation"
+                    id="recommendationMode"
+                    type="button"
+                    data-mode="recommendation"
+                    aria-pressed="false"
+                    aria-label="Describe what you want"
+                >
+                    <span class="mode-card-number">01</span>
+
+                    <span
+                        class="mode-card-icon"
+                        aria-hidden="true"
+                    >
+                        <span class="mode-icon-orbit"></span>
+                        <span class="mode-icon-star">✦</span>
+                    </span>
+
+                    <span class="mode-card-content">
+                        <span class="mode-card-kicker">
+                            RECOMMENDATION
+                        </span>
+
+                        <strong>
+                            Describe What<br>
+                            You Want
+                        </strong>
+
+                        <span class="mode-card-description">
+                            Tell MovieAI what kind of
+                            story you're in the mood for.
+                        </span>
+                    </span>
+
+                    <span
+                        class="mode-card-arrow"
+                        aria-hidden="true"
+                    >
+                        ↗
+                    </span>
+
+                    <span
+                        class="mode-card-line"
+                        aria-hidden="true"
+                    ></span>
+                </button>
+
+                <!-- =================================================
+                     F3.3 — CURSOR REACTIVE CHARACTER
+                     ================================================= -->
+                <div
+                    class="mode-character-zone"
+                    id="modeCharacterZone"
+                    aria-hidden="true"
+                >
+                    <div class="mode-character-shadow"></div>
+
+                    <div
+                        class="movie-character"
+                        id="movieCharacter"
+                    >
+                        <div class="character-face">
+
+                            <div
+                                class="character-eye character-eye-left"
+                            >
+                                <span
+                                    class="character-pupil"
+                                ></span>
+                            </div>
+
+                            <div
+                                class="character-eye character-eye-right"
+                            >
+                                <span
+                                    class="character-pupil"
+                                ></span>
+                            </div>
+
+                            <div
+                                class="character-brow character-brow-left"
+                            ></div>
+
+                            <div
+                                class="character-brow character-brow-right"
+                            ></div>
+
+                            <div class="character-mouth">
+                                <span></span>
+                            </div>
+
+                        </div>
+
+                        <div
+                            class="character-cheek character-cheek-left"
+                        ></div>
+
+                        <div
+                            class="character-cheek character-cheek-right"
+                        ></div>
+                    </div>
+                </div>
+
+                <!-- =================================================
+                     MODE 2 — MOVIE SEARCH
+                     ================================================= -->
+                <button
+                    class="mode-card mode-card-search"
+                    id="movieSearchMode"
+                    type="button"
+                    data-mode="movie-search"
+                    aria-pressed="false"
+                    aria-label="Find a movie"
+                >
+                    <span class="mode-card-number">02</span>
+
+                    <span
+                        class="mode-card-icon"
+                        aria-hidden="true"
+                    >
+                        <span class="mode-icon-lens"></span>
+                        <span class="mode-icon-handle"></span>
+                    </span>
+
+                    <span class="mode-card-content">
+                        <span class="mode-card-kicker">
+                            MOVIE SEARCH
+                        </span>
+
+                        <strong>
+                            Find a<br>
+                            Movie
+                        </strong>
+
+                        <span class="mode-card-description">
+                            Search for a movie and
+                            explore what feels similar.
+                        </span>
+                    </span>
+
+                    <span
+                        class="mode-card-arrow"
+                        aria-hidden="true"
+                    >
+                        ↗
+                    </span>
+
+                    <span
+                        class="mode-card-line"
+                        aria-hidden="true"
+                    ></span>
+                </button>
+
+            </section>
+
+            <div
+                class="mode-selection-status"
+                id="modeSelectionStatus"
+                aria-live="polite"
+                aria-atomic="true"
+            >
+                <span
+                    class="status-dot"
+                    aria-hidden="true"
+                ></span>
+
+                <span
+                    class="status-text"
+                    id="statusText"
+                >
+                    Choose a path to begin
+                </span>
+            </div>
+
+            <footer class="mode-page-footer">
+                <span>
+                    INDIAN CINEMA · INFINITE STORIES
+                </span>
+
+                <span
+                    class="mode-footer-line"
+                    aria-hidden="true"
+                ></span>
+
+                <span>01</span>
+            </footer>
+
+        </div>
+    </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
