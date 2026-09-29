@@ -1,7 +1,7 @@
 ````markdown
-# ReelMind — AI Movie Recommendation System
+# Movie AI — AI Movie Recommendation System
 
-ReelMind is an AI-assisted Indian movie recommendation system that combines a deterministic content-based recommendation engine with natural-language understanding and optional external movie enrichment.
+MovieAI is an AI-assisted Indian movie recommendation system that combines a deterministic content-based recommendation engine with natural-language understanding and optional external movie enrichment.
 
 The system is designed so that the **Indian movie dataset remains the source of truth for movie recommendations**.
 
