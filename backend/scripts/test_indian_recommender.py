@@ -1,5 +1,6 @@
 import os
 import pickle
+import copy
 
 import pandas as pd
 
@@ -129,7 +130,11 @@ def recommend(
         movie_index
     ]
 
-    distances, indices = neighbors.kneighbors(
+    # Preserve the persisted estimator while keeping the verifier usable in
+    # constrained Windows workers that cannot create an all-CPU thread pool.
+    query_neighbors = copy.copy(neighbors)
+    query_neighbors.n_jobs = 1
+    distances, indices = query_neighbors.kneighbors(
         movie_vector,
         n_neighbors=number_of_results + 1
     )

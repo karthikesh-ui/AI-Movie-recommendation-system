@@ -3,9 +3,10 @@
 /* See movie-search.js for the API configuration contract. */
 const API_BASE =
     window.MOVIEAI_API_BASE ||
-    (window.location.port === "5000"
-        ? "/api"
-        : "http://127.0.0.1:5000/api");
+    (window.location.protocol === "file:" ||
+    ["5500", "5501"].includes(window.location.port)
+        ? "http://127.0.0.1:5000/api"
+        : `${window.location.origin}/api`);
 
 
 const form =
@@ -42,6 +43,16 @@ const resultsContainer =
     document.getElementById(
         "recommendationResults"
     );
+
+
+const LATEST_DISCOVERY_PATTERN =
+    /\b(latest|new|newest|recent|recently released|upcoming)\b/i;
+
+const SIMILARITY_PATTERN =
+    /\b(?:recommend(?:\s+(?:me|movies?))?\s*(?:similar to|like)|movies?\s+like)\s+(.+)/i;
+
+const NATURAL_LANGUAGE_WORDS =
+    /\b(i|want|show|suggest|find|movie|movies|telugu|hindi|tamil|malayalam|kannada|action|comedy|romance|thriller|drama|family|mood|feel)\b/i;
 
 
 /* Initialize chip clicks */
@@ -122,12 +133,14 @@ async function handleRecommendationSubmit(event) {
 
     try {
 
-        const encoded =
-            encodeURIComponent(text);
+        const endpoint =
+            recommendationEndpoint(text);
+
+        console.log("[MovieAI] recommendation endpoint:", endpoint);
 
         const response =
             await fetch(
-                `${API_BASE}/recommend-text?text=${encoded}`,
+                endpoint,
                 {
                     headers: {
                         "Accept":
@@ -138,6 +151,9 @@ async function handleRecommendationSubmit(event) {
 
         const data =
             await response.json();
+
+        console.log("[MovieAI] response:", data);
+        console.log("[MovieAI] result count:", data.results?.length);
 
 
         if (!response.ok) {
@@ -191,6 +207,36 @@ async function handleRecommendationSubmit(event) {
         button.textContent =
             "Find my movies →";
     }
+}
+
+
+function recommendationEndpoint(text) {
+
+    const encodedText =
+        encodeURIComponent(text);
+
+    if (LATEST_DISCOVERY_PATTERN.test(text)) {
+        return `${API_BASE}/recommend-hybrid?text=${encodedText}`;
+    }
+
+    const similarityMatch =
+        text.match(SIMILARITY_PATTERN);
+
+    const title =
+        similarityMatch?.[1]?.trim() ||
+        (isDirectTitle(text) ? text : null);
+
+    if (title) {
+        return `${API_BASE}/recommend?title=${encodeURIComponent(title)}`;
+    }
+
+    return `${API_BASE}/recommend-text?text=${encodedText}`;
+}
+
+
+function isDirectTitle(text) {
+    return text.split(/\s+/).length <= 7 &&
+        !NATURAL_LANGUAGE_WORDS.test(text);
 }
 
 
@@ -360,13 +406,18 @@ function createMovieCard(movie) {
         "recommendation-movie-card";
 
 
-    if (movie.poster) {
+    const posterUrl =
+        movie.poster_url ||
+        movie.poster ||
+        movie.posterUrl;
+
+    if (posterUrl) {
 
         const poster =
             document.createElement("img");
 
         poster.src =
-            movie.poster;
+            posterUrl;
 
         poster.alt =
             `${movie.title || "Movie"} poster`;
@@ -401,6 +452,7 @@ function createMovieCard(movie) {
 
     title.textContent =
         movie.title ||
+        movie.original_title ||
         "Untitled movie";
 
 
@@ -419,9 +471,13 @@ function createMovieCard(movie) {
     const metaParts = [];
 
 
-    if (movie.year) {
+    const releaseYear =
+        movie.year ||
+        movie.release_date?.slice(0, 4);
+
+    if (releaseYear) {
         metaParts.push(
-            movie.year
+            releaseYear
         );
     }
 
@@ -440,6 +496,16 @@ function createMovieCard(movie) {
     }
 
 
+    const languages =
+        Array.isArray(movie.language) ?
+            movie.language.join(", ") :
+            movie.language;
+
+    if (languages) {
+        metaParts.push(languages);
+    }
+
+
     meta.textContent =
         metaParts.join(" · ");
 
@@ -449,7 +515,12 @@ function createMovieCard(movie) {
     );
 
 
-    if (movie.genre) {
+    const genres =
+        Array.isArray(movie.genres) ?
+            movie.genres.join(", ") :
+            movie.genres || movie.genre;
+
+    if (genres) {
 
         const genre =
             document.createElement("p");
@@ -458,7 +529,7 @@ function createMovieCard(movie) {
             "recommendation-genre";
 
         genre.textContent =
-            movie.genre;
+            genres;
 
         content.appendChild(
             genre
@@ -466,7 +537,10 @@ function createMovieCard(movie) {
     }
 
 
-    if (movie.explanation) {
+    const overview =
+        movie.overview || movie.explanation;
+
+    if (overview) {
 
         const explanation =
             document.createElement("p");
@@ -475,11 +549,39 @@ function createMovieCard(movie) {
             "recommendation-explanation";
 
         explanation.textContent =
-            movie.explanation;
+            overview;
 
         content.appendChild(
             explanation
         );
+    }
+
+
+    if (
+        movie.availability_status ===
+        "verified_available"
+    ) {
+
+        const providers =
+            Array.isArray(movie.streaming_sources) ?
+                movie.streaming_sources
+                    .map(source => source?.name)
+                    .filter(Boolean)
+                    .join(", ") :
+                "";
+
+        if (providers) {
+            const availability =
+                document.createElement("p");
+
+            availability.className =
+                "recommendation-genre";
+
+            availability.textContent =
+                `Streaming: ${providers}`;
+
+            content.appendChild(availability);
+        }
     }
 
 
@@ -518,8 +620,6 @@ function handleAPIError(error) {
 
         return;
     }
-
-
     renderError(
         "Unable to connect to the recommendation service. Make sure the Flask backend is running."
     );

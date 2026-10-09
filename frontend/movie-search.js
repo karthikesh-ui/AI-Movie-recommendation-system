@@ -1,1526 +1,219 @@
 "use strict";
 
-/* =========================================================
-   MOVIE SEARCH — FRONTEND API CONFIGURATION
-   ========================================================= */
+/* Search is intentionally local/OMDb-backed. Selecting a result moves to the
+ * dedicated details page; this file never requests recommendations. */
+const API_BASE = window.MOVIEAI_API_BASE ||
+    (window.location.protocol === "file:" || ["5500", "5501"].includes(window.location.port)
+        ? "http://127.0.0.1:5000/api" : `${window.location.origin}/api`);
+const SEARCH_STATE_KEY = "movieai_search_state";
 
-/*
- * When Flask serves this app, use its same-origin API. When the frontend is
- * opened with a separate dev server (or directly from disk), use local Flask.
- * Deployments can override this with window.MOVIEAI_API_BASE.
- */
-const API_BASE =
-    window.MOVIEAI_API_BASE ||
-    (window.location.port === "5000"
-        ? "/api"
-        : "http://127.0.0.1:5000/api");
-
-
-/* =========================================================
-   DOM INITIALIZATION
-   ========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    initializeMovieSearch
-);
-
+document.addEventListener("DOMContentLoaded", initializeMovieSearch);
 
 function initializeMovieSearch() {
+    const input = document.getElementById("movieSearchInput");
+    const searchButton = document.getElementById("movieSearchButton");
+    const autocomplete = document.getElementById("autocompleteResults");
+    const searchResults = document.getElementById("searchResults");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    if (!input || !searchButton || !autocomplete || !searchResults) return;
 
-    const input =
-        document.getElementById(
-            "movieSearchInput"
-        );
+    let autocompleteTimer;
+    let autocompleteController;
+    let searchController;
+    restoreSearchState();
 
-    const searchButton =
-        document.getElementById(
-            "movieSearchButton"
-        );
-
-    const autocomplete =
-        document.getElementById(
-            "autocompleteResults"
-        );
-
-    const searchResults =
-        document.getElementById(
-            "searchResults"
-        );
-
-    const movieDetails =
-        document.getElementById(
-            "movieDetails"
-        );
-
-    const similarMovies =
-        document.getElementById(
-            "similarMovies"
-        );
-
-
-    /*
-     * Prevent JavaScript errors if the HTML
-     * structure is incomplete.
-     */
-
-    if (
-        !input ||
-        !searchButton ||
-        !autocomplete ||
-        !searchResults ||
-        !movieDetails ||
-        !similarMovies
-    ) {
-
-        console.error(
-            "Movie search initialization failed: required DOM elements are missing."
-        );
-
-        return;
-    }
-
-
-    /* =====================================================
-       REQUEST STATE
-       ===================================================== */
-
-    let autocompleteTimer = null;
-
-    let autocompleteController = null;
-
-    let searchController = null;
-
-    let movieController = null;
-
-    let recommendationController = null;
-
-    const searchChips =
-        document.querySelectorAll(
-            ".search-chip"
-        );
-
-    const clearSearchBtn =
-        document.getElementById(
-            "clearSearchBtn"
-        );
-
-
-    /* =====================================================
-       TRENDING CHIPS HANDLER
-       ===================================================== */
-
-    searchChips.forEach(chip => {
-        chip.addEventListener("click", () => {
-            const movie = chip.getAttribute("data-movie");
-            if (movie && input) {
-                input.value = movie;
-                if (clearSearchBtn) clearSearchBtn.hidden = false;
-                hideAutocomplete();
-                
-                // Animate button
-                if (searchButton) {
-                    searchButton.classList.add("btn-pulse");
-                    setTimeout(() => searchButton.classList.remove("btn-pulse"), 600);
-                }
-
-                searchMovies();
-            }
-        });
+    document.querySelectorAll(".search-chip").forEach(chip => chip.addEventListener("click", () => {
+        input.value = chip.dataset.movie || "";
+        if (clearSearchBtn) clearSearchBtn.hidden = !input.value;
+        hideAutocomplete();
+        searchMovies();
+    }));
+    clearSearchBtn?.addEventListener("click", () => {
+        input.value = "";
+        clearSearchBtn.hidden = true;
+        hideAutocomplete();
+        input.focus();
     });
-
-
-    /* =====================================================
-       CLEAR SEARCH BUTTON
-       ===================================================== */
-
-    if (clearSearchBtn) {
-        clearSearchBtn.addEventListener("click", () => {
-            if (input) {
-                input.value = "";
-                clearSearchBtn.hidden = true;
-                hideAutocomplete();
-                input.focus();
-            }
-        });
-    }
-
-
-    /* =====================================================
-       INPUT EVENTS
-       ===================================================== */
-
-    input.addEventListener(
-        "input",
-        () => {
-            if (clearSearchBtn) {
-                clearSearchBtn.hidden = input.value.trim().length === 0;
-            }
-            handleInput();
-        }
-    );
-
-
-    input.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key === "Enter"
-            ) {
-
-                event.preventDefault();
-
-                hideAutocomplete();
-
-                searchMovies();
-            }
-
-
-            if (
-                event.key === "Escape"
-            ) {
-
-                hideAutocomplete();
-            }
-        }
-    );
-
-
-    /* =====================================================
-       SEARCH BUTTON
-       ===================================================== */
-
-    searchButton.addEventListener(
-        "click",
-        () => {
-
+    input.addEventListener("input", () => {
+        if (clearSearchBtn) clearSearchBtn.hidden = !input.value.trim();
+        window.clearTimeout(autocompleteTimer);
+        autocompleteController?.abort();
+        const query = input.value.trim();
+        if (query.length < 2) return hideAutocomplete();
+        autocompleteTimer = window.setTimeout(() => loadAutocomplete(query), 250);
+    });
+    input.addEventListener("keydown", event => {
+        if (event.key === "Escape") return hideAutocomplete();
+        if (event.key === "Enter") {
+            event.preventDefault();
             hideAutocomplete();
-
             searchMovies();
         }
-    );
+    });
+    searchButton.addEventListener("click", () => {
+        hideAutocomplete();
+        searchMovies();
+    });
+    document.addEventListener("click", event => {
+        if (!autocomplete.contains(event.target) && event.target !== input) hideAutocomplete();
+    });
 
-
-    /* =====================================================
-       CLOSE AUTOCOMPLETE WHEN CLICKING OUTSIDE
-       ===================================================== */
-
-    document.addEventListener(
-        "click",
-        event => {
-
-            const target =
-                event.target;
-
-            if (
-                !autocomplete.contains(target) &&
-                target !== input
-            ) {
-
-                hideAutocomplete();
-            }
-        }
-    );
-
-
-    /* =====================================================
-       INPUT HANDLER
-       ===================================================== */
-
-    function handleInput() {
-
-        const query =
-            input.value.trim();
-
-
-        clearTimeout(
-            autocompleteTimer
-        );
-
-
-        /*
-         * Cancel previous autocomplete request.
-         */
-
-        if (
-            autocompleteController
-        ) {
-
-            autocompleteController.abort();
-
-            autocompleteController =
-                null;
-        }
-
-
-        if (
-            query.length < 2
-        ) {
-
-            autocomplete.innerHTML =
-                "";
-
-            autocomplete.hidden =
-                true;
-
-            return;
-        }
-
-
-        autocompleteTimer =
-            setTimeout(
-                () => {
-
-                    loadAutocomplete(
-                        query
-                    );
-
-                },
-                250
-            );
-    }
-
-
-    /* =====================================================
-       AUTOCOMPLETE API
-       ===================================================== */
-
-    async function loadAutocomplete(
-        query
-    ) {
-
-        if (
-            autocompleteController
-        ) {
-
-            autocompleteController.abort();
-        }
-
-
-        autocompleteController =
-            new AbortController();
-
-
+    async function loadAutocomplete(query) {
+        autocompleteController?.abort();
+        autocompleteController = new AbortController();
         try {
-
-            const response =
-                await fetch(
-                    `${API_BASE}/autocomplete?q=${encodeURIComponent(query)}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Accept":
-                                "application/json"
-                        },
-                        signal:
-                            autocompleteController.signal
-                    }
-                );
-
-
-            if (
-                !response.ok
-            ) {
-
-                hideAutocomplete();
-
-                return;
-            }
-
-
-            const titles =
-                await parseJSON(
-                    response
-                );
-
-
-            /*
-             * Do not display results if the user
-             * has already changed the input.
-             */
-
-            if (
-                input.value.trim() !== query
-            ) {
-
-                return;
-            }
-
-
-            renderAutocomplete(
-                titles
-            );
-
-
+            const response = await fetch(`${API_BASE}/autocomplete?q=${encodeURIComponent(query)}`, {
+                headers: { Accept: "application/json" }, signal: autocompleteController.signal
+            });
+            const titles = await parseJSON(response);
+            if (!response.ok || input.value.trim() !== query) return hideAutocomplete();
+            renderAutocomplete(titles);
         } catch (error) {
-
-            if (
-                error.name === "AbortError"
-            ) {
-
-                return;
-            }
-
-
-            console.error(
-                "Autocomplete error:",
-                error
-            );
-
-            hideAutocomplete();
+            if (error.name !== "AbortError") console.error("Autocomplete error:", error);
         }
     }
 
-
-    /* =====================================================
-       AUTOCOMPLETE RENDER
-       ===================================================== */
-
-    function renderAutocomplete(
-        titles
-    ) {
-
-        autocomplete.innerHTML =
-            "";
-
-
-        if (
-            !Array.isArray(titles) ||
-            titles.length === 0
-        ) {
-
-            autocomplete.hidden =
-                true;
-
-            return;
-        }
-
-
-        titles
-            .slice(0, 8)
-            .forEach(
-                title => {
-
-                    if (
-                        !title
-                    ) {
-
-                        return;
-                    }
-
-
-                    const item =
-                        document.createElement(
-                            "button"
-                        );
-
-
-                    item.type =
-                        "button";
-
-
-                    item.className =
-                        "autocomplete-item";
-
-
-                    item.textContent =
-                        String(title);
-
-
-                    item.addEventListener(
-                        "click",
-                        () => {
-
-                            input.value =
-                                String(title);
-
-                            hideAutocomplete();
-
-                            loadMovie(
-                                String(title)
-                            );
-                        }
-                    );
-
-
-                    autocomplete.appendChild(
-                        item
-                    );
-                }
-            );
-
-
-        autocomplete.hidden =
-            autocomplete.children.length === 0;
+    function renderAutocomplete(titles) {
+        autocomplete.replaceChildren();
+        if (!Array.isArray(titles)) return hideAutocomplete();
+        titles.slice(0, 8).filter(Boolean).forEach(title => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "autocomplete-item";
+            item.textContent = String(title);
+            item.addEventListener("click", () => openMovieDetails({ title: String(title) }));
+            autocomplete.appendChild(item);
+        });
+        autocomplete.hidden = !autocomplete.children.length;
     }
-
-
-    /* =====================================================
-       SEARCH MOVIES
-       ===================================================== */
 
     async function searchMovies() {
-
-        const query =
-            input.value.trim();
-
-
-        if (
-            !query
-        ) {
-
-            renderError(
-                searchResults,
-                "Please enter a movie title."
-            );
-
-            return;
-        }
-
-
-        /*
-         * Cancel previous search.
-         */
-
-        if (
-            searchController
-        ) {
-
-            searchController.abort();
-        }
-
-
-        searchController =
-            new AbortController();
-
-
-        renderLoading(
-            searchResults,
-            "Searching movies..."
-        );
-
-
+        const query = input.value.trim();
+        if (!query) return renderMessage("error", "Please enter a movie title.");
+        searchController?.abort();
+        searchController = new AbortController();
+        renderMessage("loading", "Searching movies...");
         try {
-
-            const response =
-                await fetch(
-                    `${API_BASE}/search?q=${encodeURIComponent(query)}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Accept":
-                                "application/json"
-                        },
-                        signal:
-                            searchController.signal
-                    }
-                );
-
-
-            const data =
-                await parseJSON(
-                    response
-                );
-
-
-            if (
-                !response.ok
-            ) {
-
-                throw createAPIError(
-                    response.status,
-                    data
-                );
+            const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {
+                headers: { Accept: "application/json" }, signal: searchController.signal
+            });
+            const data = await parseJSON(response);
+            if (!response.ok) throw new Error(data?.error || "Unable to search movies.");
+            if (!Array.isArray(data?.results) || !data.results.length) {
+                return renderMessage("empty", "No matching movies found.", "Try another movie title.");
             }
-
-
-            if (
-                !data ||
-                !Array.isArray(data.results) ||
-                data.results.length === 0
-            ) {
-
-                renderEmpty(
-                    searchResults,
-                    "No matching movies found.",
-                    "Try another movie title."
-                );
-
-                return;
-            }
-
-
-            renderSearchResults(
-                data.results
-            );
-
-
+            renderSearchResults(data.results, true);
         } catch (error) {
-
-            if (
-                error.name === "AbortError"
-            ) {
-
-                return;
+            if (error.name !== "AbortError") {
+                console.error("Search error:", error);
+                renderMessage("error", error.message || "Unable to search movies. Make sure the Flask backend is running.");
             }
-
-
-            console.error(
-                "Search error:",
-                error
-            );
-
-
-            renderError(
-                searchResults,
-                getAPIErrorMessage(
-                    error,
-                    "Unable to search movies. Make sure the Flask backend is running."
-                )
-            );
         }
     }
 
-
-    /* =====================================================
-       LOAD MOVIE DETAILS
-       ===================================================== */
-
-    async function loadMovie(
-        title
-    ) {
-
-        if (
-            !title
-        ) {
-
-            return;
-        }
-
-
-        /*
-         * Cancel previous movie request.
-         */
-
-        if (
-            movieController
-        ) {
-
-            movieController.abort();
-        }
-
-
-        movieController =
-            new AbortController();
-
-
-        renderLoading(
-            movieDetails,
-            "Loading movie details..."
-        );
-
-
-        similarMovies.innerHTML =
-            "";
-
-
-        try {
-
-            const response =
-                await fetch(
-                    `${API_BASE}/movie?title=${encodeURIComponent(title)}`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Accept":
-                                "application/json"
-                        },
-                        signal:
-                            movieController.signal
-                    }
-                );
-
-
-            const movie =
-                await parseJSON(
-                    response
-                );
-
-
-            if (
-                !response.ok
-            ) {
-
-                throw createAPIError(
-                    response.status,
-                    movie
-                );
-            }
-
-
-            if (
-                !movie ||
-                !movie.title
-            ) {
-
-                throw new Error(
-                    "Movie details are unavailable."
-                );
-            }
-
-
-            renderMovieDetails(
-                movie
-            );
-
-
-            /*
-             * Use the backend's canonical title.
-             */
-
-            loadSimilarMovies(
-                movie.title || title
-            );
-
-
-        } catch (error) {
-
-            if (
-                error.name === "AbortError"
-            ) {
-
-                return;
-            }
-
-
-            console.error(
-                "Movie details error:",
-                error
-            );
-
-
-            renderError(
-                movieDetails,
-                getAPIErrorMessage(
-                    error,
-                    "Movie details are unavailable."
-                )
-            );
-        }
-    }
-
-
-    /* =====================================================
-       LOAD SIMILAR MOVIES
-       ===================================================== */
-
-    async function loadSimilarMovies(
-        title
-    ) {
-
-        if (
-            !title
-        ) {
-
-            return;
-        }
-
-
-        /*
-         * Cancel previous recommendation request.
-         */
-
-        if (
-            recommendationController
-        ) {
-
-            recommendationController.abort();
-        }
-
-
-        recommendationController =
-            new AbortController();
-
-
-        renderLoading(
-            similarMovies,
-            "Finding similar movies..."
-        );
-
-
-        try {
-
-            const response =
-                await fetch(
-                    `${API_BASE}/recommend?title=${encodeURIComponent(title)}&limit=8`,
-                    {
-                        method: "GET",
-                        headers: {
-                            "Accept":
-                                "application/json"
-                        },
-                        signal:
-                            recommendationController.signal
-                    }
-                );
-
-
-            const data =
-                await parseJSON(
-                    response
-                );
-
-
-            if (
-                !response.ok
-            ) {
-
-                throw createAPIError(
-                    response.status,
-                    data
-                );
-            }
-
-
-            if (
-                !data ||
-                !Array.isArray(data.results) ||
-                data.results.length === 0
-            ) {
-
-                renderEmpty(
-                    similarMovies,
-                    "No similar movies found.",
-                    "Try another movie."
-                );
-
-                return;
-            }
-
-
-            renderSimilarMovies(
-                data.results
-            );
-
-
-        } catch (error) {
-
-            if (
-                error.name === "AbortError"
-            ) {
-
-                return;
-            }
-
-
-            console.error(
-                "Recommendation error:",
-                error
-            );
-
-
-            renderError(
-                similarMovies,
-                getAPIErrorMessage(
-                    error,
-                    "Unable to load similar movies."
-                )
-            );
-        }
-    }
-
-
-    /* =====================================================
-       RENDER SEARCH RESULTS
-       ===================================================== */
-
-    function renderSearchResults(
-        results
-    ) {
-
-        searchResults.innerHTML =
-            `
-            <div class="movie-search-section-title">
-                <span>SEARCH RESULTS</span>
-                <h2>Select a movie</h2>
-            </div>
-            `;
-
-
-        const grid =
-            document.createElement(
-                "div"
-            );
-
-
-        grid.className =
-            "movie-search-grid";
-
-
-        results.forEach(
-            movie => {
-
-                const card =
-                    createMovieCard(
-                        movie
-                    );
-
-
-                card.addEventListener(
-                    "click",
-                    () => {
-
-                        const title =
-                            movie?.title ||
-                            "";
-
-
-                        if (
-                            !title
-                        ) {
-
-                            return;
-                        }
-
-
-                        input.value =
-                            title;
-
-
-                        hideAutocomplete();
-
-                        loadMovie(
-                            title
-                        );
-                    }
-                );
-
-
-                grid.appendChild(
-                    card
-                );
-            }
-        );
-
-
-        searchResults.appendChild(
-            grid
-        );
-    }
-
-
-    /* =====================================================
-       RENDER MOVIE DETAILS
-       ===================================================== */
-
-    function renderMovieDetails(
-        movie
-    ) {
-
-        movieDetails.innerHTML =
-            "";
-
-
-        const section =
-            document.createElement(
-                "section"
-            );
-
-
-        section.className =
-            "movie-detail-card";
-
-
-        if (
-            movie.poster
-        ) {
-
-            const poster =
-                document.createElement(
-                    "img"
-                );
-
-
-            poster.src =
-                movie.poster;
-
-
-            poster.alt =
-                `${movie.title || "Movie"} poster`;
-
-
-            poster.className =
-                "movie-detail-poster";
-
-
-            poster.loading =
-                "lazy";
-
-
-            poster.onerror =
-                () => {
-
-                    poster.remove();
-                };
-
-
-            section.appendChild(
-                poster
-            );
-        }
-
-
-        const content =
-            document.createElement(
-                "div"
-            );
-
-
-        content.className =
-            "movie-detail-content";
-
-
-        content.innerHTML =
-            `
-            <span class="movie-search-eyebrow">
-                SELECTED MOVIE
-            </span>
-
-            <h2>
-                ${escapeHTML(movie.title)}
-            </h2>
-
-            <p class="movie-detail-meta">
-                ${escapeHTML(movie.year || "")}
-                ${
-                    movie.rating
-                        ? ` · ★ ${escapeHTML(movie.rating)}`
-                        : ""
-                }
-                ${
-                    movie.runtime
-                        ? ` · ${escapeHTML(movie.runtime)}`
-                        : ""
-                }
-            </p>
-
-            <p>
-                ${escapeHTML(movie.genre || "Genre unavailable")}
-            </p>
-
-            <p>
-                ${escapeHTML(movie.plot || "No plot available.")}
-            </p>
-            `;
-
-
-        section.appendChild(
-            content
-        );
-
-
-        movieDetails.appendChild(
-            section
-        );
-
-
-        /*
-         * Bring selected movie details into view
-         * after the user selects a result.
-         */
-
-        movieDetails.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
+    function renderSearchResults(results, persist) {
+        searchResults.replaceChildren();
+        const heading = document.createElement("div");
+        heading.className = "movie-search-section-title";
+        heading.innerHTML = "<span>SEARCH RESULTS</span><h2>Select a movie</h2>";
+        const grid = document.createElement("div");
+        grid.className = "movie-search-grid";
+        results.forEach(movie => {
+            const card = createMovieCard(movie);
+            card.addEventListener("click", () => openMovieDetails(movie));
+            grid.appendChild(card);
         });
+        searchResults.append(heading, grid);
+        if (persist) saveSearchState(results);
     }
 
-
-    /* =====================================================
-       RENDER SIMILAR MOVIES
-       ===================================================== */
-
-    function renderSimilarMovies(
-        results
-    ) {
-
-        similarMovies.innerHTML =
-            `
-            <div class="movie-search-section-title">
-                <span>SIMILAR MOVIES</span>
-                <h2>You may also like</h2>
-            </div>
-            `;
-
-
-        const grid =
-            document.createElement(
-                "div"
-            );
-
-
-        grid.className =
-            "movie-search-grid";
-
-
-        results.forEach(
-            movie => {
-
-                /*
-                 * IMPORTANT:
-                 * This is the corrected syntax.
-                 *
-                 * Previous broken version had:
-                 *
-                 * createMovieCard(movie);
-                 *
-                 * inside appendChild().
-                 */
-
-                grid.appendChild(
-                    createMovieCard(
-                        movie
-                    )
-                );
+    function createMovieCard(movie) {
+        const card = document.createElement("article");
+        card.className = "movie-search-card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `View details for ${movie?.title || "movie"}`);
+        card.addEventListener("keydown", event => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                card.click();
             }
-        );
-
-
-        similarMovies.appendChild(
-            grid
-        );
-    }
-
-
-    /* =====================================================
-       CREATE MOVIE CARD
-       ===================================================== */
-
-    function createMovieCard(
-        movie
-    ) {
-
-        const card =
-            document.createElement(
-                "article"
-            );
-
-
-        card.className =
-            "movie-search-card";
-
-
-        card.tabIndex =
-            0;
-
-
-        card.setAttribute(
-            "role",
-            "button"
-        );
-
-
-        if (
-            movie &&
-            movie.poster
-        ) {
-
-            const poster =
-                document.createElement(
-                    "img"
-                );
-
-
-            poster.src =
-                movie.poster;
-
-
-            poster.alt =
-                `${movie.title || "Movie"} poster`;
-
-
-            poster.className =
-                "movie-search-poster";
-
-
-            poster.loading =
-                "lazy";
-
-
-            poster.onerror =
-                () => {
-
-                    poster.remove();
-                };
-
-
-            card.appendChild(
-                poster
-            );
+        });
+        const posterUrl = movie?.poster_url || movie?.poster;
+        if (isPresent(posterUrl)) {
+            const poster = document.createElement("img");
+            poster.src = posterUrl;
+            poster.alt = `${movie.title || "Movie"} poster`;
+            poster.className = "movie-search-poster";
+            poster.loading = "lazy";
+            poster.onerror = () => poster.remove();
+            card.appendChild(poster);
         }
-
-
-        const content =
-            document.createElement(
-                "div"
-            );
-
-
-        content.className =
-            "movie-search-card-content";
-
-
-        const title =
-            document.createElement(
-                "h3"
-            );
-
-
-        title.textContent =
-            movie?.title ||
-            "Untitled movie";
-
-
-        content.appendChild(
-            title
-        );
-
-
-        const meta =
-            document.createElement(
-                "p"
-            );
-
-
-        meta.textContent =
-            [
-                movie?.year,
-                movie?.rating
-                    ? `★ ${movie.rating}`
-                    : "",
-                movie?.runtime || ""
-            ]
-                .filter(
-                    Boolean
-                )
-                .join(
-                    " · "
-                );
-
-
-        content.appendChild(
-            meta
-        );
-
-
-        card.appendChild(
-            content
-        );
-
-
+        const content = document.createElement("div");
+        content.className = "movie-search-card-content";
+        const title = document.createElement("h3");
+        title.textContent = movie?.title || "Untitled movie";
+        const meta = document.createElement("p");
+        meta.textContent = [movie?.year, isPresent(movie?.rating) ? `★ ${movie.rating}` : "", movie?.runtime]
+            .filter(isPresent).join(" · ");
+        content.append(title, meta);
+        card.appendChild(content);
         return card;
     }
 
-
-    /* =====================================================
-       KEYBOARD SUPPORT FOR MOVIE CARDS
-       ===================================================== */
-
-    document.addEventListener(
-        "keydown",
-        event => {
-
-            const activeElement =
-                document.activeElement;
-
-
-            if (
-                !activeElement ||
-                !activeElement.classList.contains(
-                    "movie-search-card"
-                )
-            ) {
-
-                return;
-            }
-
-
-            if (
-                event.key !== "Enter" &&
-                event.key !== " "
-            ) {
-
-                return;
-            }
-
-
-            event.preventDefault();
-
-            activeElement.click();
-        }
-    );
-
-
-    /* =====================================================
-       LOADING STATE
-       ===================================================== */
-
-    function renderLoading(
-        container,
-        message
-    ) {
-
-        if (
-            !container
-        ) {
-
-            return;
-        }
-
-
-        container.innerHTML =
-            `
-            <div class="movie-search-loading">
-                <div class="movie-search-spinner"></div>
-                <p>
-                    ${escapeHTML(message)}
-                </p>
-            </div>
-            `;
+    function openMovieDetails(movie) {
+        const title = String(movie?.title || "").trim();
+        if (!title) return;
+        const identity = new URLSearchParams({ title });
+        if (/^\d{4}$/.test(String(movie?.year || ""))) identity.set("year", movie.year);
+        if (isPresent(movie?.imdb_id)) identity.set("imdb_id", movie.imdb_id);
+        window.location.assign(`movie-details.html?${identity.toString()}`);
     }
 
-
-    /* =====================================================
-       EMPTY STATE
-       ===================================================== */
-
-    function renderEmpty(
-        container,
-        title,
-        message
-    ) {
-
-        if (
-            !container
-        ) {
-
-            return;
+    function saveSearchState(results) {
+        try {
+            sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify({ query: input.value.trim(), results }));
+        } catch (error) {
+            console.warn("Unable to preserve the search state.", error);
         }
-
-
-        container.innerHTML =
-            `
-            <div class="movie-search-empty">
-                <h2>
-                    ${escapeHTML(title)}
-                </h2>
-
-                <p>
-                    ${escapeHTML(message)}
-                </p>
-            </div>
-            `;
     }
 
-
-    /* =====================================================
-       ERROR STATE
-       ===================================================== */
-
-    function renderError(
-        container,
-        message
-    ) {
-
-        if (
-            !container
-        ) {
-
-            return;
+    function restoreSearchState() {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem(SEARCH_STATE_KEY));
+            if (!saved || !Array.isArray(saved.results) || !saved.results.length) return;
+            input.value = typeof saved.query === "string" ? saved.query : "";
+            if (clearSearchBtn) clearSearchBtn.hidden = !input.value;
+            renderSearchResults(saved.results, false);
+        } catch (_) {
+            sessionStorage.removeItem(SEARCH_STATE_KEY);
         }
-
-
-        container.innerHTML =
-            `
-            <div class="movie-search-error">
-                <h2>
-                    Something went wrong
-                </h2>
-
-                <p>
-                    ${escapeHTML(message)}
-                </p>
-            </div>
-            `;
     }
 
-
-    /* =====================================================
-       HIDE AUTOCOMPLETE
-       ===================================================== */
+    function renderMessage(kind, title, detail = "") {
+        searchResults.innerHTML = `<div class="movie-search-${kind}"><h2>${escapeHTML(title)}</h2>${detail ? `<p>${escapeHTML(detail)}</p>` : ""}</div>`;
+    }
 
     function hideAutocomplete() {
-
-        autocomplete.innerHTML =
-            "";
-
-        autocomplete.hidden =
-            true;
+        window.clearTimeout(autocompleteTimer);
+        autocompleteController?.abort();
+        autocompleteController = null;
+        autocomplete.replaceChildren();
+        autocomplete.hidden = true;
     }
+}
 
+async function parseJSON(response) {
+    const text = await response.text();
+    try { return text ? JSON.parse(text) : null; } catch (_) { return null; }
+}
 
-    /* =====================================================
-       SAFE JSON PARSER
-       ===================================================== */
+function isPresent(value) {
+    return value !== null && value !== undefined && String(value).trim() !== "" && String(value).trim() !== "N/A";
+}
 
-    async function parseJSON(
-        response
-    ) {
-
-        const contentType =
-            response.headers.get(
-                "content-type"
-            ) || "";
-
-
-        if (
-            contentType.includes(
-                "application/json"
-            )
-        ) {
-
-            return await response.json();
-        }
-
-
-        const text =
-            await response.text();
-
-
-        if (
-            !text
-        ) {
-
-            return null;
-        }
-
-
-        try {
-
-            return JSON.parse(
-                text
-            );
-
-        } catch {
-
-            return {
-                error:
-                    text
-            };
-        }
-    }
-
-
-    /* =====================================================
-       API ERROR CREATOR
-       ===================================================== */
-
-    function createAPIError(
-        status,
-        data
-    ) {
-
-        const message =
-            data &&
-            typeof data.error === "string"
-                ? data.error
-                : `API request failed with status ${status}.`;
-
-
-        const error =
-            new Error(
-                message
-            );
-
-
-        error.status =
-            status;
-
-
-        error.data =
-            data;
-
-
-        return error;
-    }
-
-
-    /* =====================================================
-       API ERROR MESSAGE
-       ===================================================== */
-
-    function getAPIErrorMessage(
-        error,
-        fallback
-    ) {
-
-        if (
-            error &&
-            error.message
-        ) {
-
-            return error.message;
-        }
-
-
-        return fallback;
-    }
-
-
-    /* =====================================================
-       ESCAPE HTML
-       ===================================================== */
-
-    function escapeHTML(
-        value
-    ) {
-
-        return String(
-            value ?? ""
-        )
-            .replace(
-                /&/g,
-                "&amp;"
-            )
-            .replace(
-                /</g,
-                "&lt;"
-            )
-            .replace(
-                />/g,
-                "&gt;"
-            )
-            .replace(
-                /"/g,
-                "&quot;"
-            )
-            .replace(
-                /'/g,
-                "&#039;"
-            );
-    }
-
-
-    /* =====================================================
-       INITIAL STATE
-       ===================================================== */
-
-    autocomplete.hidden =
-        true;
-
-
-    console.log(
-        "Movie search initialized successfully."
-    );
+function escapeHTML(value) {
+    const element = document.createElement("div");
+    element.textContent = String(value || "");
+    return element.innerHTML;
 }

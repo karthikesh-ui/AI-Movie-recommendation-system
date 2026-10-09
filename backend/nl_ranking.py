@@ -102,7 +102,11 @@ def rank_candidates(candidates, ranking="general", limit=10):
             "title",
         ]
 
-    ascending = [False] * (len(sort_columns) - 1) + [True]
+    if "_intent_genre_score" in result.columns:
+        sort_columns.insert(0, "_intent_genre_score")
+        ascending = [False] * (len(sort_columns) - 1) + [True]
+    else:
+        ascending = [False] * (len(sort_columns) - 1) + [True]
 
     result = result.sort_values(
         by=sort_columns,
@@ -117,6 +121,7 @@ def rank_candidates(candidates, ranking="general", limit=10):
         "_popularity_score",
         "_underrated_score",
         "_general_score",
+        "_intent_genre_score",
     ]
 
     result = result.drop(

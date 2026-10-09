@@ -17,6 +17,17 @@
 </head>
 
 <body class="cinema-subpage">
+    <nav class="site-nav" aria-label="Main navigation">
+        <a class="site-nav-link" href="/" aria-label="Home" title="Home">
+            <span class="material-symbols-rounded" aria-hidden="true">home</span>
+        </a>
+        <a class="site-nav-link" href="/recommendation.html" aria-label="Natural-language recommendations" title="Describe a movie">
+            <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+        </a>
+        <a class="site-nav-link" href="/movie-search.html" aria-label="Search movies" title="Search movies" aria-current="page">
+            <span class="material-symbols-rounded" aria-hidden="true">search</span>
+        </a>
+    </nav>
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <div class="ambient ambient-subpage" aria-hidden="true"></div>
@@ -76,6 +87,10 @@
                 <span>Choose another way</span>
             </a>
 
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+                <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+            </button>
+
             <div class="movie-search-brand">
                 <span class="brand-sub-badge">02 / SEARCH</span>
                 <span class="brand-text">MOVIE<span class="brand-ai-accent">AI</span></span>
@@ -83,6 +98,8 @@
         </header>
 
         <section class="movie-search-main">
+            <!-- Search Page View (Query, Trending Chips, Results) -->
+            <div id="searchPageView" class="search-page-view">
             <div class="movie-search-heading">
                 <div class="heading-badge-wrap">
                     <span class="material-symbols-rounded heading-reel-icon" aria-hidden="true">travel_explore</span>
@@ -173,12 +190,12 @@
 
             <section id="searchResults" class="movie-search-results" aria-live="polite"></section>
 
-            <section id="movieDetails" class="movie-details"></section>
+            </div>
 
-            <section id="similarMovies" class="similar-movies"></section>
         </section>
     </main>
 
+    <script src="theme.js"></script>
     <script src="movie-search.js"></script>
 </body>
 

@@ -18,7 +18,7 @@ The system provides:
 - Content-based movie similarity using TF-IDF
 - OMDb-based movie information enrichment
 - Gemini-generated natural-language intent parsing
-- Gemini-generated explanations for selected recommendations
+- Dataset-grounded recommendation explanations, with optional Gemini field selection
 - Duplicate-free recommendation results
 - Graceful handling of missing data and external API failures
 
@@ -55,11 +55,13 @@ Selected Movies
      ├──────────────► OMDb Enrichment
      │
      ▼
-Gemini Explanation
+     Grounded Explanation Assembly
      │
      ▼
 Final Recommendation Response
 ````
+
+Gemini may identify which supplied dataset fields are relevant to an explanation. The backend constructs displayed explanations from actual dataset values; Gemini does not supply movie facts or choose recommendations.
 
 ### Important Architecture Boundary
 
@@ -169,7 +171,7 @@ Movie Selection
    ↓
 Optional OMDb Enrichment
    ↓
-Gemini Explanation
+Dataset-Grounded Explanation Assembly
 ```
 
 Supported intent fields include:
@@ -258,15 +260,40 @@ The OMDb API key is stored only in the backend environment configuration.
 Gemini is used for two main purposes:
 
 1. Natural-language intent parsing
-2. Natural-language explanations
+2. Selecting relevant fields for a grounded explanation
 
 Gemini does not directly select, filter, or rank movies.
 
-If Gemini is unavailable because of an API error or quota limitation, the backend handles the failure through a controlled response path rather than exposing an internal exception.
+The backend constructs displayed explanations from actual dataset values. Missing configuration, timeouts, invalid JSON, and unsupported intent values fall back safely without exposing exception details or inventing movie facts.
 
 ---
 
 ## API
+
+### Health
+
+```http
+GET /api/health
+```
+
+Returns model readiness and booleans indicating whether optional providers are configured. It never returns API keys.
+
+### Search and Autocomplete
+
+```http
+GET /api/autocomplete?q=RR
+GET /api/search?q=RRR
+```
+
+Autocomplete returns up to eight dataset titles. Search returns up to ten movie records, with exact and prefix matches prioritized.
+
+### Movie Details
+
+```http
+GET /api/movie?title=3%20Idiots
+```
+
+Returns Indian dataset details, optionally enriched with OMDb metadata.
 
 ### Title-Based Recommendations
 
@@ -275,6 +302,93 @@ GET /api/recommend?title=3%20Idiots
 ```
 
 Returns content-based recommendations for a supplied movie title.
+
+### Watchmode Discovery
+
+```http
+GET /api/watchmode/status
+GET /api/watchmode/search?q=RRR
+GET /api/watchmode/title/1569154
+GET /api/watchmode/sources/1569154?region=IN
+```
+
+These routes are separate from the recommender and return Watchmode discovery
+data only. Status returns safe configuration/authentication state without the
+provider response body or credentials. Search returns `{ "provider",
+"results", "count" }`; title details return `{ "provider", "result" }`; and
+sources return `{ "provider", "region", "sources" }`. Requests validate title
+queries, numeric Watchmode IDs, and two-letter region codes. Provider timeouts,
+rate limits, configuration problems, and upstream failures return controlled
+JSON errors and never include a key or stack trace.
+
+The API supports `region=IN` for streaming-source lookup when the Watchmode
+account permits it. Advanced release discovery is intentionally not exposed:
+it has account-specific paid-plan/credit behavior and must not be treated as
+Indian OTT availability based on US release data.
+
+### Hybrid Recommendations (A6)
+
+```http
+GET /api/recommend-hybrid?text=Suggest%20a%20Telugu%20action%20movie
+GET /api/recommend-hybrid?text=Where%20can%20I%20watch%20RRR%3F&title=RRR&region=IN
+```
+
+This additive endpoint does not change `/api/recommend` or
+`/api/recommend-text`. It returns a provider-normalized `results` array,
+`mode`, verification states, and `local_fallback_used`. `title` supplies the
+exact title for similarity and OTT-availability requests; `text` provides the
+natural-language preferences. `region` defaults to `IN`; `limit` defaults to
+10 and accepts 1--20.
+
+For an exact OTT lookup, Watchmode title search is used only to resolve an
+unambiguous title, then sources are requested for the specified region. A
+timeout, rate limit, account failure, malformed response, or no exact match is
+reported as `availability: "not_verified"` without exposing provider details.
+
+Requests containing latest/recent/upcoming wording use the local catalog only
+and return `freshness: "local_catalog_only"` with an explicit limitation.
+Watchmode genre/language/latest/OTT-release discovery is not currently
+supported or claimed, so the endpoint never presents local historical results
+as verified latest market releases.
+
+### Capability-Gated Live Discovery (A7)
+
+Set these server-only values in the ignored `backend/.env` only after verifying
+the Watchmode plan and India entitlement:
+
+```dotenv
+WATCHMODE_DISCOVERY_ENABLED=true
+WATCHMODE_DISCOVERY_WINDOW_DAYS=90
+```
+
+When enabled, a latest request with exactly one supported language and genre
+uses Watchmode `list-titles` for its genre/language/region/date filter, then
+cross-checks IDs against `title-release-dates` for the actual regional release
+type and date. The API emits a fresh candidate only when both operations agree.
+The result distinguishes `verified_release_date` from
+`verified_ott_premiere_date`; streaming confirmation is a separate availability
+state. This path uses paid catalog calls: one cached genre-reference request,
+one `list-titles` page, and one advanced release-date page per fresh discovery
+flow (each documented as one credit on success).
+
+With the flag disabled, missing configuration, a 401 entitlement response,
+rate limit, provider failure, malformed data, or no matching verified release
+row, the endpoint preserves the local fallback and returns an explicit
+limitation. No frontend changes are required.
+
+### TMDB Live Movie Discovery (A8.1)
+
+`TMDB_API_READ_ACCESS_TOKEN` is server-side only and is sent as an
+`Authorization: Bearer` header. For freshness requests, TMDB is the first
+live-discovery provider. It filters `/3/discover/movie` by TMDB genre, original
+language, `IN` region, and a configurable 90-day release window, then returns
+only candidates with real TMDB release dates. Its results use
+`provider: ["tmdb"]`, `data_source: ["tmdb_discovery"]`, and
+`freshness_status: "verified_release_date"`.
+
+TMDB release discovery does not establish OTT availability. Watchmode remains
+the source for per-title India streaming availability; if no availability lookup
+is performed, a TMDB candidate remains `availability_status: "not_checked"`.
 
 ---
 
@@ -321,9 +435,17 @@ The following configuration variables are currently used:
 ```env
 OMDB_API_KEY=
 GEMINI_API_KEY=
+TMDB_API_READ_ACCESS_TOKEN=YOUR_TMDB_READ_ACCESS_TOKEN
+WATCHMODE_API_KEY=
 FRONTEND_ORIGIN=http://localhost:5500
 PORT=5000
 ```
+`FRONTEND_ORIGIN` accepts one or more comma-separated exact origins. If unset, it defaults to `http://localhost:5500`; wildcard origins are discarded.
+
+`WATCHMODE_API_KEY` is read only by the backend. Watchmode status, search, and
+streaming-source data are optional discovery-provider capabilities; they do not
+change Model A ranking or require rebuilding any model artifacts.
+
 
 ### Security
 
@@ -350,6 +472,9 @@ AI-Movie-recommendation-system/
 │   ├── nl_pipeline.py
 │   ├── nl_recommender.py
 │   ├── nl_ranking.py
+│   ├── tests/
+│   │   ├── test_api_integration.py
+│   │   └── test_model_b.py
 │   ├── .env
 │   ├── .env.example
 │   │
@@ -371,7 +496,17 @@ AI-Movie-recommendation-system/
 │       └── indian_movies_clean.csv
 │
 ├── frontend/
+│   ├── index.html
+│   ├── recommendation.html
+│   ├── movie-search.html
+│   ├── app.js
+│   ├── recommendation.js
+│   ├── movie-search.js
+│   ├── theme.js
+│   └── styles.css
 │
+├── MODEL_QUALITY_EVALUATION.md
+├── IMPLEMENTATION_PROGRESS.md
 └── README.md
 ```
 
@@ -411,7 +546,8 @@ They are **not used by the current backend recommendation pipeline**.
 
 TMDB is outside the scope of the current architecture.
 
-No `TMDB_API_KEY` is required by the current backend.
+Set `TMDB_API_READ_ACCESS_TOKEN=YOUR_TMDB_READ_ACCESS_TOKEN` in `backend/.env`
+to enable live TMDB discovery. The token is never sent to the frontend.
 
 ---
 
@@ -433,11 +569,10 @@ The frontend must never receive server-side API keys.
 
 ### 1. Create the virtual environment
 
-From the project root:
+From the project root (skip creation if `.venv` already exists):
 
 ```bash
-cd backend
-python -m venv .venv
+py -m venv .venv
 ```
 
 Activate the environment.
@@ -445,7 +580,7 @@ Activate the environment.
 Windows PowerShell:
 
 ```powershell
-.venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 
 ---
@@ -453,7 +588,7 @@ Windows PowerShell:
 ### 2. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r backend\requirements.txt
 ```
 
 ---
@@ -482,10 +617,10 @@ Never place real API keys inside source code or `.env.example`.
 
 ### 4. Start the backend
 
-From the `backend/` directory:
+From the project root:
 
 ```bash
-python app.py
+python backend\app.py
 ```
 
 The backend uses the configured `PORT` value and defaults to:
@@ -494,28 +629,41 @@ The backend uses the configured `PORT` value and defaults to:
 5000
 ```
 
+Flask serves the frontend at `http://127.0.0.1:5000/`. To serve the static files separately, open `frontend/index.html` with VS Code Live Server (commonly `http://localhost:5500`) and set `FRONTEND_ORIGIN` in `backend/.env` to that origin. Keep Gemini and OMDb keys on the backend only.
+
+### Production WSGI startup
+
+Do not expose Flask's built-in development server publicly. On a Linux deployment host, set `PORT`, `FRONTEND_ORIGIN` (if the frontend is separate), and optional provider keys in the host's secret environment, then run from the project root:
+
+```bash
+./.venv/bin/gunicorn --chdir backend --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 app:app
+```
+
+Gunicorn is declared in `backend/requirements.txt`. It requires a Unix-like host and is not supported by this Windows development environment (`fcntl` is unavailable here). No public deployment was performed; provider credentials and deployment-account configuration must be supplied manually by the deployer. The Flask app serves static frontend files from its configured `frontend/` directory and same-origin API routes under `/api/`.
+
 ---
 
 ## Testing
 
-The backend has undergone phased testing covering:
+From `backend/`, run the offline regression suites with:
 
-* Gemini parser integration
-* Gemini failure handling
-* OMDb fallback
-* missing-data robustness
-* explanation grounding
-* API response consistency
-* duplicate prevention
-* caching behavior
-* recommendation performance
-* environment configuration
-* secret-file safety
-* application startup
-* API integration
-* TMDB dependency auditing
+```powershell
+..\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
 
-The current recommendation dataset contains approximately 48,599 movies.
+Run the Model A artifact and recommendation verifier with:
+
+```powershell
+..\.venv\Scripts\python.exe scripts\test_indian_recommender.py
+```
+
+The current test environment does not have pytest installed. The unittest suite covers Model B constraints/ranking, Gemini fallbacks and explanation grounding, OMDb fallback/cache cases, API contracts, and invalid or oversized input. The Model A verifier separately checks saved artifacts and five recommendation cases. Browser viewport checks exercised landing, recommendation, search/autocomplete, and selected movie details at 320×568, 375×667, 390×844, 768×1024, 1024×768, and 1440×900. These are focused checks, not exhaustive coverage.
+
+See `IMPLEMENTATION_PROGRESS.md` for exact final test totals and security/performance findings, and `MODEL_QUALITY_EVALUATION.md` for the 9 Model A and 12 Model B qualitative cases. No accuracy metric is claimed because ground-truth labels are unavailable.
+
+Latest executed results: 31/31 unittest cases passed; Model A artifact verification passed 5/5 recommendation cases. One live Gemini intent parse and one OMDb lookup succeeded. A later live explanation-field selection returned no usable labels and correctly used the deterministic dataset-grounded fallback.
+
+The active recommendation dataset contains 48,599 records.
 
 ---
 
@@ -533,7 +681,7 @@ Filtering and ranking are performed by backend code rather than by an LLM.
 
 ### 3. Gemini as an AI Interface
 
-Gemini converts natural-language requests into structured intent and generates explanations.
+Gemini converts natural-language requests into structured intent and may select relevant dataset metadata fields. The backend assembles explanations only from those available values.
 
 ### 4. OMDb as Enrichment
 
@@ -566,7 +714,7 @@ Recommendation ranking is deterministic and duplicate movie titles are removed f
 * Deterministic ranking
 * OMDb enrichment
 * Gemini intent parsing
-* Gemini explanations
+* Dataset-grounded explanations with optional Gemini field selection
 * Vanilla HTML/CSS/JavaScript frontend
 * API-based Flask backend
 
@@ -579,15 +727,3 @@ Recommendation ranking is deterministic and duplicate movie titles are removed f
 * LLM-based movie selection
 
 ````
-
-### After replacing the README
-
-Run the **same audit again**:
-
-```powershell
-python test_b10_11_documentation_audit.py
-````
-
-This time we're expecting the old `REVIEW REQUIRED` items to disappear.
-
-**Don't move to B10.11.4 yet.** Send me the complete output of this audit first. We will only mark **B10.11.3 COMPLETE** after the verification passes.

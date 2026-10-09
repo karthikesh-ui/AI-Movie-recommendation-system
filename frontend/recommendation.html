@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="cinema-subpage">
+    <nav class="site-nav" aria-label="Main navigation">
+        <a class="site-nav-link" href="/" aria-label="Home" title="Home">
+            <span class="material-symbols-rounded" aria-hidden="true">home</span>
+        </a>
+        <a class="site-nav-link" href="/recommendation.html" aria-label="Natural-language recommendations" title="Describe a movie" aria-current="page">
+            <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+        </a>
+        <a class="site-nav-link" href="/movie-search.html" aria-label="Search movies" title="Search movies">
+            <span class="material-symbols-rounded" aria-hidden="true">search</span>
+        </a>
+    </nav>
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <div class="ambient ambient-subpage" aria-hidden="true"></div>
@@ -73,6 +84,10 @@
                 <span class="material-symbols-rounded back-arrow-icon" aria-hidden="true">arrow_back</span>
                 <span>Choose another way</span>
             </a>
+
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+                <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+            </button>
 
             <div class="recommendation-brand">
                 <span class="brand-sub-badge">01 / DISCOVER</span>
@@ -183,6 +198,7 @@
         </section>
     </main>
 
+    <script src="theme.js"></script>
     <script src="recommendation.js"></script>
 </body>
 </html>
