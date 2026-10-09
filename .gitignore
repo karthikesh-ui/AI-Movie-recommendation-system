@@ -4,3 +4,6 @@ __pycache__/
 .venv/
 backend/.venv/
 .DS_Store
+
+.vercel
+.env*
