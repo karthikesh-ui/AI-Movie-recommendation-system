@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MovieAI — Search an Indian movie and explore similar films powered by AI.">
+    <title>MovieAI — Find a Movie & Similar Films</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="cinema-subpage">
+    <nav class="site-nav" aria-label="Main navigation">
+        <a class="site-nav-link" href="/" aria-label="Home" title="Home">
+            <span class="material-symbols-rounded" aria-hidden="true">home</span>
+        </a>
+        <a class="site-nav-link" href="/recommendation.html" aria-label="Natural-language recommendations" title="Describe a movie">
+            <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+        </a>
+        <a class="site-nav-link" href="/movie-search.html" aria-label="Search movies" title="Search movies" aria-current="page">
+            <span class="material-symbols-rounded" aria-hidden="true">search</span>
+        </a>
+    </nav>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+    <div class="ambient ambient-subpage" aria-hidden="true"></div>
+
+    <!-- Decorative Floating Movie Poster Showcase -->
+    <aside class="cinema-poster-flair cinema-poster-left" aria-hidden="true">
+        <div class="decorative-poster-card card-top-left" style="--rotation: -5deg; --float-delay: 0.3s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie1.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">verified</span> ICONIC</span>
+        </div>
+        <div class="decorative-poster-card card-bottom-left" style="--rotation: 5deg; --float-delay: 1.8s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie5.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">bolt</span> THRILLER</span>
+        </div>
+    </aside>
+
+    <aside class="cinema-poster-flair cinema-poster-right" aria-hidden="true">
+        <div class="decorative-poster-card card-top-right" style="--rotation: 4deg; --float-delay: 1.1s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie7.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">movie</span> SUPERHIT</span>
+        </div>
+        <div class="decorative-poster-card card-bottom-right" style="--rotation: -6deg; --float-delay: 2.5s;">
+            <div class="poster-shine"></div>
+            <img src="assets/movie10.jpg" alt="" class="poster-img">
+            <span class="poster-tag"><span class="material-symbols-rounded icon-sm">military_tech</span> CULT
+                CLASSIC</span>
+        </div>
+    </aside>
+
+    <main class="movie-search-page">
+        <!-- Film Strip Header Accent -->
+        <div class="subpage-film-strip" aria-hidden="true">
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">movie</span>
+                <span>SCENE: 02</span>
+            </div>
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">interests</span>
+                <span>TAKE: SIMILARITY</span>
+            </div>
+            <div class="strip-item">
+                <span class="material-symbols-rounded strip-icon">search</span>
+                <span>ROLL: SEARCH</span>
+            </div>
+            <div class="strip-item strip-highlight">
+                <span>INDIAN CINEMA • INFINITE STORIES</span>
+            </div>
+        </div>
+
+        <header class="movie-search-header">
+            <a href="index.html#nextPage" class="movie-search-back" id="backToModesBtn"
+                aria-label="Back to mode selection">
+                <span class="material-symbols-rounded back-arrow-icon" aria-hidden="true">arrow_back</span>
+                <span>Choose another way</span>
+            </a>
+
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+                <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
+            </button>
+
+            <div class="movie-search-brand">
+                <span class="brand-sub-badge">02 / SEARCH</span>
+                <span class="brand-text">MOVIE<span class="brand-ai-accent">AI</span></span>
+            </div>
+        </header>
+
+        <section class="movie-search-main">
+            <!-- Search Page View (Query, Trending Chips, Results) -->
+            <div id="searchPageView" class="search-page-view">
+            <div class="movie-search-heading">
+                <div class="heading-badge-wrap">
+                    <span class="material-symbols-rounded heading-reel-icon" aria-hidden="true">travel_explore</span>
+                    <span class="movie-search-eyebrow">
+                        MOVIE SEARCH & SIMILARITY
+                    </span>
+                </div>
+
+                <h1>
+                    Find a <span class="gradient-text">movie.</span>
+                </h1>
+
+                <p>
+                    Search any Indian movie to view details, ratings, and uncover other films with the exact same vibe.
+                </p>
+            </div>
+
+            <!-- Trending & Popular Movie Quick Chips with Google Icons -->
+            <div class="prompt-chips-wrapper">
+                <div class="chips-header">
+                    <span class="material-symbols-rounded chips-icon" aria-hidden="true">local_fire_department</span>
+                    <span class="chips-title">Popular Indian Blockbusters:</span>
+                    <small class="chips-hint">(Click to search)</small>
+                </div>
+                <div class="prompt-chips" role="toolbar" aria-label="Popular movies to search">
+                    <button type="button" class="search-chip" data-movie="RRR">
+                        <span class="material-symbols-rounded chip-icon">movie</span> RRR
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Baahubali: The Beginning">
+                        <span class="material-symbols-rounded chip-icon">bolt</span> Baahubali
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Jersey">
+                        <span class="material-symbols-rounded chip-icon">sports_cricket</span> Jersey
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Vikram">
+                        <span class="material-symbols-rounded chip-icon">local_fire_department</span> Vikram
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Sita Ramam">
+                        <span class="material-symbols-rounded chip-icon">favorite</span> Sita Ramam
+                    </button>
+                    <button type="button" class="search-chip" data-movie="K.G.F: Chapter 1">
+                        <span class="material-symbols-rounded chip-icon">workspace_premium</span> K.G.F
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Kantara">
+                        <span class="material-symbols-rounded chip-icon">forest</span> Kantara
+                    </button>
+                    <button type="button" class="search-chip" data-movie="Eega">
+                        <span class="material-symbols-rounded chip-icon">bug_report</span> Eega
+                    </button>
+                </div>
+            </div>
+
+            <div class="movie-search-box-card">
+                <div class="movie-search-box">
+                    <div class="movie-search-input-wrapper">
+                        <span class="material-symbols-rounded search-lens-icon" aria-hidden="true">search</span>
+
+                        <input id="movieSearchInput" type="search" class="movie-search-input" autocomplete="off"
+                            maxlength="150" placeholder="Search by movie title (e.g., RRR, Baahubali, Jersey)..."
+                            aria-label="Search for a movie">
+
+                        <button type="button" id="clearSearchBtn" class="clear-btn search-clear-btn" title="Clear input"
+                            aria-label="Clear input" hidden>
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
+
+                        <div id="autocompleteResults" class="autocomplete-results" hidden></div>
+                    </div>
+
+                    <button id="movieSearchButton" class="movie-search-button" type="button">
+                        <span class="button-text">Search</span>
+                        <span class="material-symbols-rounded button-arrow" aria-hidden="true">arrow_forward</span>
+                        <span class="button-glow-ring" aria-hidden="true"></span>
+                    </button>
+                </div>
+
+                <div class="search-box-subtext">
+                    <span class="subtext-item"><span class="material-symbols-rounded subtext-icon">bolt</span> Instant
+                        Title Autocomplete</span>
+                    <span class="subtext-dot">•</span>
+                    <span class="subtext-item"><span class="material-symbols-rounded subtext-icon">target</span> TF-IDF
+                        Cosine Similarity</span>
+                    <span class="subtext-dot">•</span>
+                    <span class="subtext-item"><span class="material-symbols-rounded subtext-icon">star</span> OMDb &
+                        Live Metadata</span>
+                </div>
+            </div>
+
+            <section id="searchResults" class="movie-search-results" aria-live="polite"></section>
+
+            </div>
+
+        </section>
+    </main>
+
+    <script src="theme.js"></script>
+    <script src="movie-search.js"></script>
+</body>
+
+</html>

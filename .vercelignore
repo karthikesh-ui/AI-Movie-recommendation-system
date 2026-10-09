@@ -1,0 +1,8 @@
+﻿backend/model/
+backend/models_backup/
+data/raw/
+data/processed/
+premium-audit.json
+backend/.env
+backend/model/similarity_old.pkl
+backend/model/movies_old.pkl
