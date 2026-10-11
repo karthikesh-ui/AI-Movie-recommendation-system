@@ -44,7 +44,7 @@ MovieAI takes its visual cues from a well-kept cinema programme: clear informati
 
 ## Colors
 
-`#0879df` is the action and discovery blue. White is the primary content surface; `#11151b` carries titles and `#52667d` carries supporting facts. `#edf4fa` is reserved for poster fallbacks and quiet supporting surfaces. Dark mode uses the existing theme overrides in `frontend/styles.css` without changing semantic hierarchy.
+`#0879df` is the action and discovery blue. White is the primary content surface; `#11151b` carries titles and `#52667d` carries supporting facts. `#edf4fa` is reserved for poster fallbacks and quiet supporting surfaces. MovieAI is intentionally light-only so recommendation and metadata states remain consistent across routes.
 
 ## Typography
 

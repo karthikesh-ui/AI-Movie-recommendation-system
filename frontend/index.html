@@ -18,14 +18,17 @@
 </head>
 <body>
 <nav class="site-nav" aria-label="Main navigation">
-    <a class="site-nav-link" href="/" aria-label="Home" title="Home" aria-current="page">
+        <a class="site-nav-link" href="/" aria-label="Home" title="Home" aria-current="page">
         <span class="material-symbols-rounded" aria-hidden="true">home</span>
+            <span class="site-nav-label">Home</span>
     </a>
     <a class="site-nav-link" href="/recommendation.html" aria-label="Natural-language recommendations" title="Describe a movie">
         <span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span>
+            <span class="site-nav-label">Discover</span>
     </a>
     <a class="site-nav-link" href="/movie-search.html" aria-label="Search movies" title="Search movies">
         <span class="material-symbols-rounded" aria-hidden="true">search</span>
+            <span class="site-nav-label">Search</span>
     </a>
 </nav>
 <div class="app">
@@ -137,21 +140,8 @@
 
                 <h1 class="brand-title">
                     <span>M</span>
-
-                    <span class="reel-letter">
-                        <span class="brand-reel">
-                            <i></i>
-                            <i></i>
-                            <i></i>
-                            <i></i>
-                            <i></i>
-                        </span>
-                    </span>
-
-                    <span>V</span>
-                    <span>I</span>
-                    <span>E</span>
-                    <span class="brand-ai">AI</span>
+                    <span class="reel-letter" aria-hidden="true"><span class="brand-reel"><i></i><i></i><i></i><i></i><i></i></span></span>
+                    <span>V</span><span>I</span><span>E</span><span class="brand-ai">AI</span>
                 </h1>
 
                 <div class="brand-subtitle">
@@ -161,7 +151,7 @@
 
                 <div class="mini-features">
                     <div class="mini-feature">
-                        <div class="mini-icon">🍿</div>
+                        <div class="mini-icon">✦</div>
                         <div>
                             <strong>DISCOVER</strong>
                             <small>NEW STORIES</small>
@@ -171,7 +161,7 @@
                     <div class="feature-divider" aria-hidden="true"></div>
 
                     <div class="mini-feature">
-                        <div class="mini-icon">🎬</div>
+                        <div class="mini-icon">◉</div>
                         <div>
                             <strong>EXPLORE</strong>
                             <small>YOUR TASTE</small>
@@ -181,7 +171,7 @@
                     <div class="feature-divider" aria-hidden="true"></div>
 
                     <div class="mini-feature">
-                        <div class="mini-icon">🎟️</div>
+                        <div class="mini-icon">★</div>
                         <div>
                             <strong>ENJOY</strong>
                             <small>INDIAN CINEMA</small>
@@ -271,10 +261,6 @@
 
             <header class="mode-page-top">
                 <span class="mode-brand">MOVIEAI</span>
-
-                <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
-                    <span class="material-symbols-rounded" aria-hidden="true">dark_mode</span>
-                </button>
 
                 <span class="mode-index">
                     01 / DISCOVER
@@ -421,13 +407,7 @@
                 >
                     <span class="mode-card-number">02</span>
 
-                    <span
-                        class="mode-card-icon"
-                        aria-hidden="true"
-                    >
-                        <span class="mode-icon-lens"></span>
-                        <span class="mode-icon-handle"></span>
-                    </span>
+                    <span class="mode-card-icon movieai-search-icon" data-movieai-search-icon aria-hidden="true"></span>
 
                     <span class="mode-card-content">
                         <span class="mode-card-kicker">
@@ -495,8 +475,7 @@
         </div>
     </section>
 </div>
-
-<script src="theme.js"></script>
+<script src="search-icon.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function loadMovie(container, title, params) {
+    window.MovieAILoader.showFullPage("Loading movie details");
     renderLoading(container);
     const identity = new URLSearchParams({ title });
     if (/^\d{4}$/.test(params.get("year") || "")) identity.set("year", params.get("year"));
@@ -34,6 +35,7 @@ async function loadMovie(container, title, params) {
         console.error("Movie details error:", error);
         renderMessage(container, "Movie details are unavailable.", error.message || "Please return to search and try again.");
     } finally {
+        window.MovieAILoader.hideFullPage();
         container.setAttribute("aria-busy", "false");
     }
 }
@@ -74,11 +76,11 @@ function renderMovieDetails(container, movie) {
 async function loadRecommendations(container, movie) {
     const section = element("section", "local-recommendations");
     const heading = element("div", "local-recommendations-heading");
-    heading.append(text("YOU MAY ALSO LIKE", "movie-search-eyebrow"), text("You May Also Like", "local-recommendations-title", "h2"));
+    heading.appendChild(text("You May Also Like", "local-recommendations-title", "h2"));
     const genres = (Array.isArray(movie.genres) ? movie.genres : String(movie.genre || "").split(",")).filter(isPresent);
     heading.appendChild(text(genres.length ? `Based on ${genres.join(" · ")}` : "From the local movie catalog", "local-recommendations-subtitle", "p"));
     const grid = element("div", "local-recommendations-grid");
-    grid.appendChild(text("Finding local recommendations…", "local-recommendations-loading", "p"));
+    grid.innerHTML = window.MovieAILoader.inline("Loading recommendations");
     section.append(heading, grid);
     container.appendChild(section);
     const query = new URLSearchParams({ title: movie.title, genre: genres.join(",") });
@@ -119,9 +121,9 @@ function createRecommendationCard(movie) {
         image.src = poster;
         image.alt = `${movie.title} poster`;
         image.loading = "lazy";
-        image.onerror = () => image.replaceWith(recommendationPosterFallback());
+        image.onerror = () => image.replaceWith(recommendationPosterFallback(movie.title));
         card.appendChild(image);
-    } else card.appendChild(recommendationPosterFallback());
+    } else card.appendChild(recommendationPosterFallback(movie.title));
     const content = element("div", "local-recommendation-content");
     content.append(text(movie.title, "local-recommendation-title", "h3"));
     const metadata = [movie.year, isPresent(movie.rating) ? `★ ${movie.rating}` : ""].filter(isPresent).join(" · ");
@@ -133,9 +135,10 @@ function createRecommendationCard(movie) {
     return card;
 }
 
-function recommendationPosterFallback() {
+function recommendationPosterFallback(title) {
     const fallback = element("div", "local-recommendation-poster local-recommendation-poster-fallback");
-    fallback.append(icon("movie"), text("Poster unavailable", "local-recommendation-poster-label"));
+    const initials = String(title || "Movie").trim().split(/\s+/).slice(0, 2).map(word => word[0]).join("").toUpperCase();
+    fallback.append(icon("movie"), text(initials || "M", "local-recommendation-poster-label"));
     return fallback;
 }
 
@@ -317,7 +320,7 @@ function enableCardTilt(card) {
 }
 
 function renderLoading(container) {
-    container.innerHTML = '<div class="movie-search-loading"><div class="movie-search-spinner"></div><p>Loading movie details...</p></div>';
+    container.innerHTML = window.MovieAILoader.inline("Loading movie details");
 }
 function renderMessage(container, title, message) {
     container.innerHTML = `<div class="movie-search-error"><h2>${escapeHTML(title)}</h2><p>${escapeHTML(message)}</p></div>`;

@@ -15,7 +15,10 @@ function initializeMovieSearch() {
     const autocomplete = document.getElementById("autocompleteResults");
     const searchResults = document.getElementById("searchResults");
     const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const searchIcon = document.getElementById("movieSearchIcon");
     if (!input || !searchButton || !autocomplete || !searchResults) return;
+
+    if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches) input.placeholder = "Search a movie title";
 
     let autocompleteTimer;
     let autocompleteController;
@@ -34,6 +37,22 @@ function initializeMovieSearch() {
         hideAutocomplete();
         input.focus();
     });
+    searchResults.addEventListener("click", event => {
+        if (event.target.closest("[data-empty-clear]")) {
+            searchController?.abort();
+            input.value = "";
+            if (clearSearchBtn) clearSearchBtn.hidden = true;
+            hideAutocomplete();
+            input.focus();
+            return;
+        }
+        const suggestion = event.target.closest("[data-empty-query]");
+        if (!suggestion) return;
+        input.value = suggestion.dataset.emptyQuery || "";
+        if (clearSearchBtn) clearSearchBtn.hidden = !input.value;
+        hideAutocomplete();
+        searchMovies();
+    });
     input.addEventListener("input", () => {
         if (clearSearchBtn) clearSearchBtn.hidden = !input.value.trim();
         window.clearTimeout(autocompleteTimer);
@@ -42,6 +61,7 @@ function initializeMovieSearch() {
         if (query.length < 2) return hideAutocomplete();
         autocompleteTimer = window.setTimeout(() => loadAutocomplete(query), 250);
     });
+    input.addEventListener("pointerdown", () => window.MovieAISearchIcon?.pop(searchIcon));
     input.addEventListener("keydown", event => {
         if (event.key === "Escape") return hideAutocomplete();
         if (event.key === "Enter") {
@@ -91,11 +111,13 @@ function initializeMovieSearch() {
         const query = input.value.trim();
         if (!query) return renderMessage("error", "Please enter a movie title.");
         searchController?.abort();
-        searchController = new AbortController();
+        const controller = new AbortController();
+        searchController = controller;
+        window.MovieAISearchIcon?.setLoading(searchIcon, true);
         renderMessage("loading", "Searching movies...");
         try {
             const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`, {
-                headers: { Accept: "application/json" }, signal: searchController.signal
+                headers: { Accept: "application/json" }, signal: controller.signal
             });
             const data = await parseJSON(response);
             if (!response.ok) throw new Error(data?.error || "Unable to search movies.");
@@ -108,6 +130,8 @@ function initializeMovieSearch() {
                 console.error("Search error:", error);
                 renderMessage("error", error.message || "Unable to search movies. Make sure the Flask backend is running.");
             }
+        } finally {
+            if (searchController === controller) window.MovieAISearchIcon?.setLoading(searchIcon, false);
         }
     }
 
@@ -191,6 +215,19 @@ function initializeMovieSearch() {
     }
 
     function renderMessage(kind, title, detail = "") {
+        if (kind === "loading") {
+            searchResults.innerHTML = window.MovieAILoader.inline(title);
+            return;
+        }
+        if (kind === "empty") {
+            const actions = [
+                { label: "Try RRR", query: "RRR" },
+                { label: "Try Sita Ramam", query: "Sita Ramam" },
+                { label: "Try Vikram", query: "Vikram" }
+            ];
+            searchResults.innerHTML = window.MovieAIEmptyState?.render({ actions }) || `<div class="movie-search-empty"><h2>${escapeHTML(title)}</h2><p>${escapeHTML(detail)}</p></div>`;
+            return;
+        }
         searchResults.innerHTML = `<div class="movie-search-${kind}"><h2>${escapeHTML(title)}</h2>${detail ? `<p>${escapeHTML(detail)}</p>` : ""}</div>`;
     }
 
