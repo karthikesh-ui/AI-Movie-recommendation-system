@@ -28,9 +28,9 @@ RECOMMENDATION_SOURCES = frozenset({"tmdb", "local", "hybrid"})
 
 
 def normalize_recommendation_source(value: str | None) -> str:
-    """Return a safe, explicit source choice; TMDB is the A9 default."""
-    source = str(value or "tmdb").strip().casefold()
-    return source if source in RECOMMENDATION_SOURCES else "tmdb"
+    """Return a safe source choice; hybrid keeps normal prompts useful."""
+    source = str(value or "hybrid").strip().casefold()
+    return source if source in RECOMMENDATION_SOURCES else "hybrid"
 
 
 def detect_mode(text: str, title: str | None = None) -> str:
@@ -223,6 +223,13 @@ def retrieve_hybrid(*, text: str, title: str | None, region: str, limit: int, in
     candidates = _local_general(movies, intent, limit)
     if source == "local":
         if mode in {"LATEST", "LATEST_OTT"}:
+            if mode == "LATEST_OTT":
+                return _response(
+                    mode, text, intent, [], local_fallback_used=False,
+                    recommendation_source=source, availability="unknown",
+                    freshness="not_verified",
+                    limitation="Local catalog results cannot verify streaming availability or platforms.",
+                )
             for candidate in candidates:
                 candidate.freshness_status = "local_catalog_no_verified_release_date"
             return _response(mode, text, intent, candidates, local_fallback_used=True,
@@ -272,6 +279,14 @@ def retrieve_hybrid(*, text: str, title: str | None, region: str, limit: int, in
             # do not spend additional Watchmode credits after a TMDB failure.
             # Local fallback remains truthful and preserves the A7 provider for
             # future explicit capability-gated use.
+            if mode == "LATEST_OTT":
+                return _response(
+                    mode, text, intent, [], local_fallback_used=False,
+                    availability="unknown", freshness="not_verified",
+                    limitation="Verified OTT availability is unavailable, so theatrical catalog results were not shown.",
+                    recommendation_source=source, provider_status=tmdb_outcome.provider_status,
+                    discovery={"provider": "tmdb", "status": tmdb_outcome.status, "query_supported": tmdb_outcome.query_supported},
+                )
             for candidate in candidates:
                 candidate.freshness_status = "local_catalog_no_verified_release_date"
             return _response(
@@ -300,6 +315,13 @@ def retrieve_hybrid(*, text: str, title: str | None, region: str, limit: int, in
                     availability=availability, freshness=freshness, recommendation_source=source,
                     discovery={"provider": "watchmode", "status": "verified", "query_supported": True, "credits_note": outcome.credits_note},
                 )
+        if mode == "LATEST_OTT":
+            return _response(
+                mode, text, intent, [], local_fallback_used=False,
+                availability="unknown", freshness="not_verified",
+                limitation="Verified OTT availability is unavailable, so theatrical catalog results were not shown.",
+                recommendation_source=source, provider_status=provider_status, discovery=discovery,
+            )
         for candidate in candidates:
             candidate.freshness_status = "local_catalog_no_verified_release_date"
         limitation = outcome.limitation if discovery_provider is not None else "Verified latest discovery is unsupported by the current Watchmode integration."

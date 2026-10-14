@@ -53,6 +53,19 @@ def _contains_any(value, requested_values):
     )
 
 
+def _contains_all(value, requested_values):
+    """Check that every explicit requested genre exists on a catalog movie."""
+    if pd.isna(value):
+        return False
+
+    available = {
+        item.strip().casefold()
+        for item in str(value).split(",")
+        if item.strip()
+    }
+    return requested_values.issubset(available)
+
+
 def _matches_mood_or_audience(value, intent):
     """Apply the natural-language mood/audience hints as a genre-based soft filter."""
     if pd.isna(value):
@@ -137,13 +150,29 @@ def retrieve_candidates(
     }
 
     if genres and "genre" in candidates.columns:
-
+        # Genre words are explicit constraints, not loose hints.  A request
+        # for "sci-fi" must not return action or fantasy merely because those
+        # categories can sometimes feel adjacent.  When the user specifies
+        # multiple genres, each must be present on the returned title.
         candidates = candidates[
             candidates["genre"].apply(
-                lambda value: _contains_any(
-                    value,
-                    genres
-                )
+                lambda value: _contains_all(value, genres)
+            )
+        ]
+
+    # Exclusions are strict when the catalog exposes genres.  They are kept
+    # separate from mood hints so a request such as "thrillers, not horror"
+    # never reintroduces the excluded category during ranking.
+    excluded_genres = {
+        str(value).strip().casefold()
+        for value in intent.get("exclude_genres", [])
+        if str(value).strip()
+    }
+
+    if excluded_genres and "genre" in candidates.columns:
+        candidates = candidates[
+            ~candidates["genre"].apply(
+                lambda value: _contains_any(value, excluded_genres)
             )
         ]
 

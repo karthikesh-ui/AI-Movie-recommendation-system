@@ -116,14 +116,17 @@ class TMDBClient:
             return TMDBResponse(False, response.status_code, error="malformed_response")
         return response
 
-    def discover_movies(self, *, genre_id: int, original_language: str | None, region: str, release_date_start: str, release_date_end: str, page: int = 1, limit: int = 20) -> TMDBResponse:
+    def discover_movies(self, *, genre_id: int | list[int], original_language: str | None, region: str, release_date_start: str, release_date_end: str, page: int = 1, limit: int = 20) -> TMDBResponse:
         if not 1 <= int(page) <= 500 or not 1 <= int(limit) <= 20:
+            return TMDBResponse(False, None, error="invalid_request")
+        genre_ids = genre_id if isinstance(genre_id, list) else [genre_id]
+        if not genre_ids or any(not isinstance(value, int) or value < 1 for value in genre_ids):
             return TMDBResponse(False, None, error="invalid_request")
         params = {
             "include_adult": "false",
             "include_video": "false",
             "language": "en-US",
-            "with_genres": str(genre_id),
+            "with_genres": ",".join(map(str, genre_ids)),
             "region": region,
             "release_date.gte": release_date_start,
             "release_date.lte": release_date_end,

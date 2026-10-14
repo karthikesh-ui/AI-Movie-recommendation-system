@@ -31,17 +31,26 @@ const context = {
 
 vm.createContext(context);
 vm.runInContext(
-    `${fs.readFileSync("frontend/recommendation.js", "utf8")}\nglobalThis.movieAiTest = { recommendationEndpoint, createMovieCard };`,
+    `${fs.readFileSync("frontend/recommendation.js", "utf8")}\nglobalThis.movieAiTest = { recommendationEndpoint, createMovieCard, discoveryRequestText, setDiscoveryMode, buildQuerySentence, queryBuilder };`,
     context,
 );
 
-const { recommendationEndpoint, createMovieCard } = context.movieAiTest;
+const { recommendationEndpoint, createMovieCard, discoveryRequestText, setDiscoveryMode, buildQuerySentence, queryBuilder } = context.movieAiTest;
 
 assert.match(recommendationEndpoint("RRR"), /\/recommend\?title=RRR$/);
 assert.match(recommendationEndpoint("recommend movies similar to RRR"), /\/recommend\?title=RRR$/);
 assert.match(recommendationEndpoint("latest Telugu action movies"), /\/recommend-hybrid\?text=latest%20Telugu%20action%20movies$/);
 assert.match(recommendationEndpoint("latest Telugu movies"), /\/recommend-hybrid\?text=latest%20Telugu%20movies$/);
 assert.match(recommendationEndpoint("I want an impossible genre"), /\/recommend-text\?text=/);
+
+setDiscoveryMode("theatrical");
+assert.equal(discoveryRequestText("Telugu action movies"), "latest Telugu action movies");
+setDiscoveryMode("streaming");
+assert.equal(discoveryRequestText("Telugu action movies"), "latest Telugu action movies available on OTT in India");
+queryBuilder.language = "Telugu";
+queryBuilder.genres = ["Action", "Thriller"];
+queryBuilder.time = "Latest";
+assert.equal(buildQuerySentence(), "Find the latest telugu action thrillers with verified streaming availability in India.");
 
 const hybridCard = createMovieCard({
     title: "Anakapalli",

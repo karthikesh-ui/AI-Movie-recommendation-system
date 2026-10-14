@@ -122,7 +122,7 @@ class TMDBDiscoveryProviderTests(unittest.TestCase):
         self.assertEqual(candidate.language, ["te"])
         self.assertIn("Action", candidate.genres)
         self.assertEqual(candidate.freshness_status, "verified_release_date")
-        self.assertEqual(client.discover_movies.call_args.kwargs["genre_id"], 28)
+        self.assertEqual(client.discover_movies.call_args.kwargs["genre_id"], [28])
         client.movie_genres.assert_not_called()
 
     def test_known_genre_skips_failed_reference_metadata(self):
@@ -132,8 +132,17 @@ class TMDBDiscoveryProviderTests(unittest.TestCase):
             region="IN", limit=10, release_kind="theatrical",
         )
         self.assertEqual(outcome.status, "available")
-        self.assertEqual(client.discover_movies.call_args.kwargs["genre_id"], 28)
+        self.assertEqual(client.discover_movies.call_args.kwargs["genre_id"], [28])
         client.movie_genres.assert_not_called()
+
+    def test_multiple_known_genres_are_sent_to_tmdb(self):
+        client = self.client()
+        outcome = TMDBDiscoveryProvider(client).discover(
+            intent={"genres": ["action", "thriller"], "languages": ["telugu"]},
+            region="IN", limit=10, release_kind="theatrical",
+        )
+        self.assertEqual(outcome.status, "available")
+        self.assertEqual(client.discover_movies.call_args.kwargs["genre_id"], [28, 53])
 
     def test_unknown_genre_uses_reference_metadata_only_as_safe_fallback(self):
         client = self.client(genres=WatchmodeResponse(False, None, error="network_error"))

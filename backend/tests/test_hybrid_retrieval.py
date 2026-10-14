@@ -41,11 +41,11 @@ class RecommendationSourceTests(unittest.TestCase):
     def _intent():
         return {"genres": ["action"], "languages": ["telugu"], "ranking": "general"}
 
-    def test_configuration_defaults_to_tmdb_and_normalizes_supported_values(self):
-        self.assertEqual(normalize_recommendation_source(None), "tmdb")
+    def test_configuration_defaults_to_hybrid_and_normalizes_supported_values(self):
+        self.assertEqual(normalize_recommendation_source(None), "hybrid")
         self.assertEqual(normalize_recommendation_source(" LOCAL "), "local")
         self.assertEqual(normalize_recommendation_source("hybrid"), "hybrid")
-        self.assertEqual(normalize_recommendation_source("unsupported"), "tmdb")
+        self.assertEqual(normalize_recommendation_source("unsupported"), "hybrid")
 
     def test_tmdb_source_uses_discovery_without_local_retrieval(self):
         tmdb = Mock()
@@ -128,6 +128,17 @@ class HybridApiTests(unittest.TestCase):
         self.assertTrue(payload["results"])
         provider.search_by_title.assert_not_called()
 
+    def test_recommend_text_uses_local_catalog_for_normal_hybrid_requests(self):
+        response, payload, provider = self._request(
+            "/api/recommend-text?text=I%20want%20a%20romcom%20in%20Tamil"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["recommendation_source"], "hybrid")
+        self.assertTrue(payload["results"])
+        self.assertIn("tamil", payload["intent"]["languages"])
+        self.assertTrue({"romance", "comedy"}.issubset(payload["intent"]["genres"]))
+        provider.search_by_title.assert_not_called()
+
     def test_latest_request_is_explicitly_local_catalog_fallback(self):
         response, payload, provider = self._request("/api/recommend-hybrid?text=I%20want%20the%20latest%20Telugu%20action%20movie")
         self.assertEqual(response.status_code, 200)
@@ -136,6 +147,16 @@ class HybridApiTests(unittest.TestCase):
         self.assertIn("fallback", payload["limitation"].casefold())
         self.assertTrue(all(item["freshness_status"] == "local_catalog_no_verified_release_date" for item in payload["results"]))
         provider.search_by_title.assert_not_called()
+
+    def test_latest_ott_request_never_falls_back_to_theatrical_catalog_titles(self):
+        response, payload, _ = self._request(
+            "/api/recommend-hybrid?text=latest%20Telugu%20action%20movies%20available%20on%20OTT%20in%20India"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["mode"], "LATEST_OTT")
+        self.assertEqual(payload["results"], [])
+        self.assertFalse(payload["local_fallback_used"])
+        self.assertIn("theatrical catalog results were not shown", payload["limitation"])
 
     def test_ott_exact_title_maps_india_sources(self):
         provider = self._provider(
@@ -205,6 +226,24 @@ class HybridApiTests(unittest.TestCase):
         self.assertFalse(payload["local_fallback_used"])
         self.assertEqual(payload["results"][0]["tmdb_id"], 99)
         watchmode.genres.assert_not_called()
+
+    def test_latest_multi_genre_request_calls_tmdb_discovery(self):
+        tmdb = Mock()
+        tmdb.discover.return_value = DiscoveryOutcome(
+            [MovieCandidate(title="Fresh Telugu Action Thriller", year=2026, tmdb_id=100,
+                            release_date="2026-10-01", language=["te"], genres=["Action", "Thriller"],
+                            provider=["tmdb"], freshness_status="verified_release_date")],
+            "available", query_supported=True,
+        )
+        with patch.object(movie_app, "GEMINI_API_KEY", ""), patch.object(movie_app, "TMDB_DISCOVERY", tmdb):
+            response = self.client.get(
+                "/api/recommend-text?text=Show%20me%20the%20latest%20Telugu%20action%20thriller%20movies"
+            )
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["results"][0]["tmdb_id"], 100)
+        tmdb.discover.assert_called_once()
+        self.assertEqual(tmdb.discover.call_args.kwargs["intent"]["genres"], ["thriller", "action"])
 
     def test_recommend_text_uses_tmdb_source_for_latest_natural_language(self):
         tmdb = Mock()

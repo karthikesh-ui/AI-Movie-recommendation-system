@@ -31,6 +31,7 @@ TMDB_MOVIE_GENRES = {
     "horror": (27, "Horror"), "music": (10402, "Music"),
     "mystery": (9648, "Mystery"), "romance": (10749, "Romance"),
     "science fiction": (878, "Science Fiction"), "tv movie": (10770, "TV Movie"),
+    "sci-fi": (878, "Science Fiction"),
     "thriller": (53, "Thriller"), "war": (10752, "War"), "western": (37, "Western"),
 }
 TMDB_MOVIE_GENRE_IDS = {name: value[0] for name, value in TMDB_MOVIE_GENRES.items()}
@@ -252,22 +253,26 @@ class TMDBDiscoveryProvider:
         language = WatchmodeDiscoveryProvider._language(intent)
         genres = intent.get("genres", [])
         if (not isinstance(languages, list) or (not language and languages)
-                or not isinstance(genres, list) or len(genres) != 1):
-            return DiscoveryOutcome([], "unsupported", "TMDB live discovery requires one supported genre and, when specified, one supported language.")
-        requested_genre = str(genres[0]).casefold()
-        genre_id = TMDB_MOVIE_GENRE_IDS.get(requested_genre)
+                or not isinstance(genres, list) or not genres):
+            return DiscoveryOutcome([], "unsupported", "TMDB live discovery requires at least one supported genre and, when specified, one supported language.")
         genre_names = TMDB_MOVIE_GENRE_NAMES
-        if genre_id is None:
-            genre_ids, genre_names, genre_response = self._genres()
+        resolved_genre_ids = []
+        for requested_genre in (str(value).casefold() for value in genres):
+            genre_id = TMDB_MOVIE_GENRE_IDS.get(requested_genre)
+            if genre_id is not None:
+                resolved_genre_ids.append(genre_id)
+                continue
+            reference_genre_ids, genre_names, genre_response = self._genres()
             if genre_response:
                 return DiscoveryOutcome([], "unavailable", "TMDB genre metadata is unavailable; using the local catalog fallback.", _tmdb_status(genre_response, "genre/movie/list"))
-            genre_id = genre_ids.get(requested_genre)
-        if genre_id is None:
-            return DiscoveryOutcome([], "unsupported", "The requested genre is not available from TMDB discovery.")
+            genre_id = reference_genre_ids.get(requested_genre)
+            if genre_id is None:
+                return DiscoveryOutcome([], "unsupported", "The requested genre is not available from TMDB discovery.")
+            resolved_genre_ids.append(genre_id)
         today = as_of or date.today()
         start = today - timedelta(days=self.window_days)
         response = self.client.discover_movies(
-            genre_id=genre_id, original_language=language, region=region,
+            genre_id=resolved_genre_ids, original_language=language, region=region,
             release_date_start=start.isoformat(), release_date_end=today.isoformat(), page=1, limit=limit,
         )
         if not response.ok:

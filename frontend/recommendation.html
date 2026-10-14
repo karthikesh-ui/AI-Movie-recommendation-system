@@ -24,22 +24,49 @@
             <div class="recommendation-brand"><span class="brand-text">MOVIE<span class="brand-ai-accent">AI</span></span></div>
         </header>
         <section class="recommendation-main">
-            <div class="recommendation-heading"><h1>Describe what you <span class="gradient-text">want.</span></h1><p>Tell MovieAI your mood, favorite stars, genre, or the kind of story you crave today.</p></div>
+            <div class="recommendation-heading"><h1>Find movies that match your <span class="gradient-text">taste.</span></h1><p>Tell MovieAI what you feel like watching. Add a language, genre, mood, or release period to refine your picks.</p></div>
             <form id="recommendationForm" class="recommendation-form" novalidate>
                 <div class="recommendation-search-shell">
                     <span id="recommendationSearchIcon" class="recommendation-search-icon movieai-search-icon" data-movieai-search-icon aria-hidden="true"></span>
-                    <input id="recommendationInput" class="recommendation-input" type="text" maxlength="500" autocomplete="off" placeholder="Try: Telugu romantic feel-good movie with great music..." aria-label="Describe what kind of movie you want">
+                    <input id="recommendationInput" class="recommendation-input" type="text" maxlength="500" autocomplete="off" placeholder="Try: Latest Telugu action thrillers" aria-label="Describe what kind of movie you want">
                     <button type="button" id="clearInputBtn" class="clear-btn recommendation-clear-btn" aria-label="Clear movie request" hidden><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
                     <button type="submit" id="recommendationButton" class="recommendation-button" aria-label="Roll the reel and find movies"><span class="button-text">Roll the reel</span><span class="recommendation-button-spinner" aria-hidden="true"></span><span class="material-symbols-rounded button-arrow" aria-hidden="true">arrow_forward</span></button>
                 </div>
             </form>
-            <div class="recommendation-prompt-chips prompt-chips" role="toolbar" aria-label="Suggested movie prompts">
-                <button type="button" class="prompt-chip" data-prompt="I want a Telugu feel-good romantic family entertainer with comedy and great music">Feel-Good Romance</button>
-                <button type="button" class="prompt-chip" data-prompt="High-voltage mass action thriller with goosebumps elevation scenes and punch dialogues">Mass Action Thriller</button>
-                <button type="button" class="prompt-chip" data-prompt="A gripping murder mystery whodunit with unexpected plot twists and suspense">Suspense Mystery</button>
-                <button type="button" class="prompt-chip" data-prompt="Emotional sports underdog drama about dedication, struggle, and triumph">Inspiring Sports Drama</button>
-                <button type="button" class="prompt-chip" data-prompt="Epic Indian mythological fantasy with grand visuals, folklore, and heroism">Mythological Epic</button>
-                <button type="button" class="prompt-chip" data-prompt="A laugh-out-loud 90s style vintage comedy drama for a lighthearted weekend">Vintage Comedy</button>
+            <div class="recommendation-guide-actions" id="recommendationGuideAnchor">
+                <button type="button" id="openDiscoveryGuide" class="recommendation-guide-trigger" aria-expanded="false" aria-controls="discoveryGuide"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Build your search</button>
+                <button type="button" id="showSearchExamples" class="recommendation-guide-link" aria-expanded="false" aria-controls="searchExamples">Explore examples</button>
+                <aside id="discoveryOnboarding" class="discovery-onboarding" aria-labelledby="discoveryOnboardingTitle" aria-describedby="discoveryOnboardingCopy" hidden>
+                    <div class="discovery-onboarding-icon" aria-hidden="true"><span class="material-symbols-rounded">auto_awesome</span><span class="material-symbols-rounded">movie_filter</span></div>
+                    <div class="discovery-onboarding-copy"><h2 id="discoveryOnboardingTitle">Your taste. Your next favorite.</h2><p id="discoveryOnboardingCopy">Describe the movies you enjoy in your own words. Add a language, genre, mood, or release period to narrow your picks.</p></div>
+                    <div class="discovery-onboarding-actions"><button type="button" id="onboardingShowHow" class="onboarding-primary">Show me how</button><button type="button" id="onboardingDismiss" class="onboarding-secondary">Maybe later</button></div>
+                </aside>
+            </div>
+            <aside id="discoveryGuide" class="discovery-guide" aria-label="Build a movie search" aria-hidden="true">
+                <div class="discovery-guide-copy"><span class="material-symbols-rounded" aria-hidden="true">tips_and_updates</span><p><strong>Tell MovieAI what you want in one sentence.</strong> Add a language, genre, release time, or mood. Choose where to find movies when it matters.</p></div>
+                <div class="discovery-mode-options" role="group" aria-label="Live discovery mode">
+                    <button type="button" class="discovery-mode is-selected" data-discovery-mode="catalog" aria-pressed="true"><span class="material-symbols-rounded" aria-hidden="true">auto_awesome</span><span><b>Search all movies</b><small>Our movie collection</small></span></button>
+                    <button type="button" class="discovery-mode" data-discovery-mode="theatrical" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">theaters</span><span><b>In theaters &amp; new releases</b><small>Recent theatrical releases</small></span></button>
+                    <button type="button" class="discovery-mode" data-discovery-mode="streaming" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">live_tv</span><span><b>Streaming in India</b><small>Verified streaming availability</small></span></button>
+                </div>
+                <p id="discoveryModeHelp" class="discovery-mode-help">Find matches in our movie collection. Add a title, language, genre, or mood.</p>
+                <div class="query-builder" aria-label="Guided movie query builder">
+                    <div class="query-builder-heading"><strong>Build a sentence</strong><button type="button" id="resetQueryBuilder">Reset</button></div>
+                    <div class="query-builder-row"><span>Language</span><div class="query-builder-chips" data-query-group="language"><button type="button" data-query-value="Telugu" aria-pressed="false">Telugu</button><button type="button" data-query-value="Tamil" aria-pressed="false">Tamil</button><button type="button" data-query-value="Hindi" aria-pressed="false">Hindi</button><button type="button" data-query-value="Malayalam" aria-pressed="false">Malayalam</button><button type="button" data-query-value="Kannada" aria-pressed="false">Kannada</button><button type="button" data-query-value="English" aria-pressed="false">English</button></div></div>
+                    <div class="query-builder-row"><span>Genre</span><div class="query-builder-chips" data-query-group="genre"><button type="button" data-query-value="Action" aria-pressed="false">Action</button><button type="button" data-query-value="Thriller" aria-pressed="false">Thriller</button><button type="button" data-query-value="Romance" aria-pressed="false">Romance</button><button type="button" data-query-value="Comedy" aria-pressed="false">Comedy</button><button type="button" data-query-value="Horror" aria-pressed="false">Horror</button><button type="button" data-query-value="Sci-fi" aria-pressed="false">Sci-fi</button><button type="button" data-query-value="Family" aria-pressed="false">Family</button><button type="button" data-query-value="Drama" aria-pressed="false">Drama</button></div></div>
+                    <div class="query-builder-row"><span>Release time</span><div class="query-builder-chips" data-query-group="time"><button type="button" data-query-value="Latest" aria-pressed="false">Latest</button><button type="button" data-query-value="Recent" aria-pressed="false">Recent</button></div></div>
+                    <div class="query-builder-row"><span>Mood</span><div class="query-builder-chips" data-query-group="mood"><button type="button" data-query-value="Feel-good" aria-pressed="false">Feel-good</button><button type="button" data-query-value="Romantic" aria-pressed="false">Romantic</button><button type="button" data-query-value="Intense" aria-pressed="false">Intense</button><button type="button" data-query-value="Light" aria-pressed="false">Light</button><button type="button" data-query-value="Suspenseful" aria-pressed="false">Suspenseful</button><button type="button" data-query-value="Emotional" aria-pressed="false">Emotional</button></div></div>
+                    <p class="query-builder-preview"><span class="material-symbols-rounded" aria-hidden="true">edit</span><span id="queryBuilderSentence">Choose a few details to make your sentence.</span></p>
+                </div>
+                <button type="button" id="dismissDiscoveryGuide" class="discovery-guide-dismiss">Done</button>
+            </aside>
+            <div id="searchExamples" class="recommendation-prompt-chips prompt-chips" role="toolbar" aria-label="Example movie requests">
+                <button type="button" class="prompt-chip" data-prompt="Show the latest Telugu action thriller movies." data-mode="theatrical">Latest Telugu action thrillers</button>
+                <button type="button" class="prompt-chip" data-prompt="Find recent Tamil romantic comedies." data-mode="theatrical">Recent Tamil rom-coms</button>
+                <button type="button" class="prompt-chip" data-prompt="What Malayalam family dramas are streaming in India?" data-mode="streaming">Malayalam streaming dramas</button>
+                <button type="button" class="prompt-chip" data-prompt="Show feel-good Telugu movies.">Feel-good Telugu movies</button>
+                <button type="button" class="prompt-chip" data-prompt="Movies like Sita Ramam.">Movies like Sita Ramam</button>
+                <button type="button" class="prompt-chip" data-prompt="Show Hindi horror movies streaming in India." data-mode="streaming">Hindi horror on streaming</button>
             </div>
             <section id="recommendationResults" class="recommendation-results" aria-live="polite" aria-busy="false"></section>
         </section>

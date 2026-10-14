@@ -20,6 +20,11 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from nl_intent import (
     build_dataset_vocabulary,
+    canonicalize_terms,
+    find_catalog_terms,
+    GENRE_ALIASES,
+    LANGUAGE_ALIASES,
+    normalize_query_text,
     validate_intent,
 )
 from nl_pipeline import recommend_from_intent
@@ -118,7 +123,7 @@ WATCHMODE_DISCOVERY = WatchmodeDiscoveryProvider(
 )
 TMDB_CLIENT = TMDBClient()
 RECOMMENDATION_SOURCE = normalize_recommendation_source(
-    os.getenv("RECOMMENDATION_SOURCE", "tmdb")
+    os.getenv("RECOMMENDATION_SOURCE", "hybrid")
 )
 TMDB_DISCOVERY = TMDBDiscoveryProvider(
     TMDB_CLIENT,
@@ -138,37 +143,38 @@ INDIAN_LANGUAGE_HINTS = {
 # ============================================================
 
 def _rule_based_intent_parse(user_text, dataset_vocabulary):
-    text_lower = user_text.lower()
+    text_lower = normalize_query_text(user_text)
     valid_genres = dataset_vocabulary.get("genres", set()) if dataset_vocabulary else set()
     valid_languages = dataset_vocabulary.get("languages", set()) if dataset_vocabulary else set()
 
     non_genre_terms = {"short", "medium", "long"}
     matched_genres = [
-        genre
-        for genre in valid_genres
-        if genre not in non_genre_terms and genre in text_lower
+        genre for genre in find_catalog_terms(text_lower, valid_genres, GENRE_ALIASES)
+        if genre not in non_genre_terms
     ]
-    matched_languages = [l for l in valid_languages if l in text_lower]
+    matched_languages = find_catalog_terms(text_lower, valid_languages, LANGUAGE_ALIASES)
+
+    excluded_genres = []
+    for genre in matched_genres:
+        pattern = re.escape(genre).replace(r"\-", r"[-\s]?")
+        if re.search(r"\b(?:not|without|except|no)(?:\s+\w+){0,2}\s+" + pattern + r"\b", text_lower):
+            excluded_genres.append(genre)
+    matched_genres = [genre for genre in matched_genres if genre not in excluded_genres]
 
     # “Indian” is a region cue, not one original-language filter.  Keeping it
     # unfiltered lets TMDB use its India region query without claiming a title
     # has every language in the local catalog.
 
-    if re.search(r"\bscience[\s-]+fiction\b|\bsci[\s-]*fi\b|\bscifi\b", text_lower):
-        for genre in ["adventure", "fantasy", "action"]:
-            if genre in valid_genres and genre not in matched_genres:
-                matched_genres.append(genre)
-
     mood = None
-    if any(k in text_lower for k in ["feel-good", "feel good", "happy", "fun", "joy"]):
+    if any(k in text_lower for k in ["feel-good", "feel good", "happy", "fun", "joy", "uplifting", "comfort", "cheerful"]):
         mood = "feel_good"
-    elif any(k in text_lower for k in ["romantic", "romance", "love", "date"]):
+    elif any(k in text_lower for k in ["romantic", "romance", "love", "date", "rom-com", "romcom"]):
         mood = "romantic"
-    elif any(k in text_lower for k in ["emotional", "touching", "heartfelt", "sad"]):
+    elif any(k in text_lower for k in ["emotional", "touching", "heartfelt", "sad", "tearjerker", "tear-jerker", "powerful"]):
         mood = "emotional"
-    elif any(k in text_lower for k in ["intense", "thrilling", "action", "suspense", "mystery"]):
+    elif any(k in text_lower for k in ["intense", "thrilling", "action", "suspense", "mystery", "gripping", "edge of your seat"]):
         mood = "intense"
-    elif any(k in text_lower for k in ["light", "casual", "easygoing", "funny"]):
+    elif any(k in text_lower for k in ["light", "casual", "easygoing", "funny", "relaxing", "easy watch"]):
         mood = "light"
 
     audience = None
@@ -188,7 +194,9 @@ def _rule_based_intent_parse(user_text, dataset_vocabulary):
         audience = "partner"
 
     ranking = "general"
-    if any(k in text_lower for k in ["best", "top", "highest rated", "greatest"]):
+    if any(k in text_lower for k in ["highest rated", "highly rated"]):
+        ranking = "highly_rated"
+    elif any(k in text_lower for k in ["best", "top", "greatest"]):
         ranking = "best"
     elif any(k in text_lower for k in ["popular", "blockbuster", "hit"]):
         ranking = "popular"
@@ -196,7 +204,7 @@ def _rule_based_intent_parse(user_text, dataset_vocabulary):
         ranking = "underrated"
 
     duration_preference = None
-    if any(term in text_lower for term in ["short movie", "short film", "under 2 hours", "less than 2 hours"]):
+    if any(term in text_lower for term in ["short movie", "short film", "under 2 hours", "less than 2 hours", "under 120 minutes", "90 minute"]):
         duration_preference = "short"
     elif re.search(r"\bshort\b", text_lower) and (matched_genres or matched_languages):
         duration_preference = "short"
@@ -214,6 +222,14 @@ def _rule_based_intent_parse(user_text, dataset_vocabulary):
     if year_range:
         year_from, year_to = map(int, year_range.groups())
     else:
+        decade = re.search(r"\b((?:18|19|20)\d)0s\b", text_lower)
+        short_decade = re.search(r"\b(\d{2})s\b", text_lower)
+        if decade:
+            year_from = int(decade.group(1) + "0")
+            year_to = year_from + 9
+        elif short_decade and int(short_decade.group(1)) >= 30:
+            year_from = 1900 + int(short_decade.group(1))
+            year_to = year_from + 9
         start_year = re.search(
             r"\b(after|since)\s+(18\d{2}|19\d{2}|20\d{2}|2100)\b",
             text_lower,
@@ -222,15 +238,16 @@ def _rule_based_intent_parse(user_text, dataset_vocabulary):
             r"\b(?:before|until)\s+(18\d{2}|19\d{2}|20\d{2}|2100)\b",
             text_lower,
         )
-        if start_year:
+        if start_year and year_from is None:
             year_from = int(start_year.group(2))
             if start_year.group(1) == "after":
                 year_from += 1
-        if end_year:
+        if end_year and year_to is None:
             year_to = int(end_year.group(1))
 
     raw_intent = {
         "genres": matched_genres,
+        "exclude_genres": excluded_genres,
         "languages": matched_languages,
         "year_from": year_from,
         "year_to": year_to,
@@ -320,6 +337,7 @@ Use exactly these fields:
 
 {{
   "genres": [],
+  "exclude_genres": [],
   "languages": [],
   "year_from": null,
   "year_to": null,
@@ -345,7 +363,7 @@ Genres and languages must be expressed using the user's meaning.
 The backend will validate them against the actual dataset.
 
 If the user does not specify something, use:
-- empty array for genres/languages
+- empty array for genres/exclude_genres/languages
 - null for year_from/year_to
 - null for duration_preference
 - null for mood
@@ -372,12 +390,15 @@ User request:
                 valid_languages = dataset_vocabulary.get("languages", set()) if dataset_vocabulary else set()
 
                 requested_genres = raw_intent.get("genres", [])
+                requested_excluded_genres = raw_intent.get("exclude_genres", [])
                 requested_languages = raw_intent.get("languages", [])
 
                 if isinstance(requested_genres, str):
                     requested_genres = [requested_genres]
                 if isinstance(requested_languages, str):
                     requested_languages = [requested_languages]
+                if isinstance(requested_excluded_genres, str):
+                    requested_excluded_genres = [requested_excluded_genres]
 
                 requested_genres = [
                     str(value).strip().casefold()
@@ -405,12 +426,12 @@ User request:
                     "genres": [
                         genre
                         for genre in requested_genres
-                        if genre not in valid_genres
+                        if not canonicalize_terms([genre], valid_genres, GENRE_ALIASES)
                     ],
                     "languages": [
                         language
                         for language in requested_languages
-                        if language not in valid_languages
+                        if not canonicalize_terms([language], valid_languages, LANGUAGE_ALIASES)
                     ]
                 }
 
@@ -432,6 +453,16 @@ User request:
                 ):
                     if fallback_intent[field] is not None:
                         validated_intent[field] = fallback_intent[field]
+
+                # Dataset-backed rules repair aliases or omitted catalog terms
+                # from a provider response, while retaining provider choices.
+                for field in ("genres", "languages", "exclude_genres"):
+                    values = validated_intent.get(field, []) + fallback_intent.get(field, [])
+                    vocabulary = valid_genres if field != "languages" else valid_languages
+                    aliases = GENRE_ALIASES if field != "languages" else LANGUAGE_ALIASES
+                    validated_intent[field] = canonicalize_terms(values, vocabulary, aliases)
+
+                validated_intent = validate_intent(validated_intent, dataset_vocabulary)
 
                 return validated_intent, unsupported_terms
 

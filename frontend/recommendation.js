@@ -8,20 +8,45 @@ const clearBtn = document.getElementById("clearInputBtn");
 const promptChips = document.querySelectorAll(".prompt-chip");
 const resultsContainer = document.getElementById("recommendationResults");
 const recommendationSearchIcon = document.getElementById("recommendationSearchIcon");
+const discoveryGuide = document.getElementById("discoveryGuide");
+const discoveryModeButtons = document.querySelectorAll("[data-discovery-mode]");
+const dismissDiscoveryGuide = document.getElementById("dismissDiscoveryGuide");
+const openDiscoveryGuide = document.getElementById("openDiscoveryGuide");
+const showSearchExamples = document.getElementById("showSearchExamples");
+const searchExamples = document.getElementById("searchExamples");
+const discoveryModeHelp = document.getElementById("discoveryModeHelp");
+const queryBuilderSentence = document.getElementById("queryBuilderSentence");
+const queryBuilderButtons = document.querySelectorAll("[data-query-group] button");
+const resetQueryBuilder = document.getElementById("resetQueryBuilder");
+const discoveryOnboarding = document.getElementById("discoveryOnboarding");
+const onboardingShowHow = document.getElementById("onboardingShowHow");
+const onboardingDismiss = document.getElementById("onboardingDismiss");
 const LATEST_DISCOVERY_PATTERN = /\b(latest|new|newest|recent|recently released|upcoming)\b/i;
+const OTT_DISCOVERY_PATTERN = /\b(ott|stream(?:ing)?|available on)\b/i;
 const SIMILARITY_PATTERN = /\b(?:recommend(?:\s+(?:me|movies?))?\s*(?:similar to|like)|movies?\s+like)\s+(.+)/i;
 const NATURAL_LANGUAGE_WORDS = /\b(i|want|show|suggest|find|movie|movies|telugu|hindi|tamil|malayalam|kannada|action|comedy|romance|thriller|drama|family|mood|feel)\b/i;
 const LANGUAGE_NAMES = { te: "Telugu", hi: "Hindi", ta: "Tamil", ml: "Malayalam", kn: "Kannada", en: "English", bn: "Bengali", mr: "Marathi", pa: "Punjabi", gu: "Gujarati", or: "Odia", as: "Assamese", ur: "Urdu" };
 let activeRequest = null;
+let discoveryMode = "catalog";
+const queryBuilder = { language: "", genres: [], time: "", mood: "" };
 
-if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches && input) input.placeholder = "Describe a movie you want to watch";
+const MODE_HELP = {
+    catalog: "Find matches in our movie collection. Add a title, language, genre, or mood.",
+    theatrical: "Discover recent theatrical releases. Add a language or genre to narrow your search.",
+    streaming: "Find recent movies with verified streaming availability in India. Platforms appear only when verified."
+};
+const GENRE_ORDER = ["Action", "Thriller", "Romance", "Comedy", "Horror", "Sci-fi", "Family", "Drama"];
+
+if (typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches && input) input.placeholder = "Try: Telugu action thrillers";
+
+scheduleOnboarding();
 
 promptChips.forEach(chip => chip.addEventListener("click", () => {
     if (!input || !chip.dataset.prompt) return;
     input.value = chip.dataset.prompt;
+    if (chip.dataset.mode) setDiscoveryMode(chip.dataset.mode);
     updateClearButton();
     input.focus();
-    form?.requestSubmit();
 }));
 resultsContainer?.addEventListener("click", event => {
     if (event.target.closest("[data-empty-clear]")) {
@@ -41,13 +66,141 @@ resultsContainer?.addEventListener("click", event => {
 input?.addEventListener("input", updateClearButton);
 clearBtn?.addEventListener("click", () => { activeRequest?.abort(); input.value = ""; updateClearButton(); input.focus(); });
 form?.addEventListener("submit", handleRecommendationSubmit);
+openDiscoveryGuide?.addEventListener("click", () => toggleDiscoveryGuide());
+showSearchExamples?.addEventListener("click", () => {
+    searchExamples?.classList.toggle("is-expanded");
+    showSearchExamples.setAttribute("aria-expanded", String(searchExamples?.classList.contains("is-expanded")));
+    searchExamples?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+});
+discoveryModeButtons.forEach(modeButton => modeButton.addEventListener("click", () => setDiscoveryMode(modeButton.dataset.discoveryMode || "catalog")));
+dismissDiscoveryGuide?.addEventListener("click", () => setDiscoveryGuideOpen(false));
+onboardingShowHow?.addEventListener("click", () => completeOnboarding(true));
+onboardingDismiss?.addEventListener("click", () => completeOnboarding(false));
+resetQueryBuilder?.addEventListener("click", () => {
+    queryBuilder.language = "";
+    queryBuilder.genres = [];
+    queryBuilder.time = "";
+    queryBuilder.mood = "";
+    queryBuilderButtons.forEach(chip => chip.setAttribute("aria-pressed", "false"));
+    renderQueryBuilder();
+});
+queryBuilderButtons.forEach(chip => chip.addEventListener("click", () => {
+    const group = chip.closest("[data-query-group]")?.dataset.queryGroup;
+    const value = chip.dataset.queryValue || "";
+    if (!group || !value) return;
+    if (group === "genre") {
+        queryBuilder.genres = queryBuilder.genres.includes(value) ? queryBuilder.genres.filter(item => item !== value) : [...queryBuilder.genres, value];
+    } else {
+        queryBuilder[group] = queryBuilder[group] === value ? "" : value;
+        if (group === "time" && queryBuilder.time && discoveryMode === "catalog") setDiscoveryMode("theatrical");
+    }
+    queryBuilderButtons.forEach(buttonElement => {
+        const sameGroup = buttonElement.closest("[data-query-group]")?.dataset.queryGroup === group;
+        const selected = group === "genre" ? queryBuilder.genres.includes(buttonElement.dataset.queryValue) : sameGroup && queryBuilder[group] === buttonElement.dataset.queryValue;
+        buttonElement.setAttribute("aria-pressed", String(selected));
+    });
+    const sentence = buildQuerySentence();
+    if (input && sentence) {
+        input.value = sentence;
+        updateClearButton();
+    }
+    renderQueryBuilder();
+}));
 
 function updateClearButton() { if (clearBtn && input) clearBtn.hidden = !input.value; }
+
+function scheduleOnboarding() {
+    if (!discoveryOnboarding) return;
+    window.setTimeout(() => {
+        discoveryOnboarding.hidden = false;
+        requestAnimationFrame(() => discoveryOnboarding.classList.add("is-visible"));
+    }, 180);
+}
+
+function completeOnboarding(showBuilder) {
+    if (!discoveryOnboarding || discoveryOnboarding.hidden) {
+        if (showBuilder) setDiscoveryGuideOpen(true);
+        return;
+    }
+    const triggerBox = openDiscoveryGuide?.getBoundingClientRect();
+    const sourceBox = onboardingShowHow?.getBoundingClientRect();
+    const reduceMotion = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    discoveryOnboarding.classList.remove("is-visible");
+    discoveryOnboarding.classList.add("is-leaving");
+    if (!reduceMotion && showBuilder && openDiscoveryGuide && triggerBox && sourceBox && typeof openDiscoveryGuide.animate === "function") {
+        const sourceCenterX = sourceBox.left + sourceBox.width / 2;
+        const sourceCenterY = sourceBox.top + sourceBox.height / 2;
+        const triggerCenterX = triggerBox.left + triggerBox.width / 2;
+        const triggerCenterY = triggerBox.top + triggerBox.height / 2;
+        openDiscoveryGuide.animate([
+            { transform: `translate(${sourceCenterX - triggerCenterX}px, ${sourceCenterY - triggerCenterY}px) scale(1.04)`, opacity: 0.82 },
+            { transform: "translate(0, 0) scale(1)", opacity: 1 }
+        ], { duration: 360, easing: "cubic-bezier(.22, 1, .36, 1)" });
+    }
+    window.setTimeout(() => {
+        discoveryOnboarding.hidden = true;
+        discoveryOnboarding.classList.remove("is-leaving");
+        if (showBuilder) {
+            setDiscoveryGuideOpen(true);
+            openDiscoveryGuide?.focus({ preventScroll: true });
+        }
+    }, reduceMotion ? 0 : 190);
+}
+
+function setDiscoveryGuideOpen(open) {
+    if (!discoveryGuide) return;
+    discoveryGuide.classList.toggle("is-open", open);
+    discoveryGuide.setAttribute("aria-hidden", String(!open));
+    openDiscoveryGuide?.setAttribute("aria-expanded", String(open));
+}
+
+function toggleDiscoveryGuide() { setDiscoveryGuideOpen(!discoveryGuide?.classList.contains("is-open")); }
+
+function setDiscoveryMode(mode) {
+    discoveryMode = MODE_HELP[mode] ? mode : "catalog";
+    discoveryModeButtons.forEach(buttonElement => {
+        const selected = buttonElement.dataset.discoveryMode === discoveryMode;
+        buttonElement.classList.toggle("is-selected", selected);
+        buttonElement.setAttribute("aria-pressed", String(selected));
+    });
+    if (discoveryModeHelp) discoveryModeHelp.textContent = MODE_HELP[discoveryMode];
+    renderQueryBuilder();
+}
+
+function buildQuerySentence() {
+    const mood = String(queryBuilder.mood || "").toLowerCase();
+    const language = String(queryBuilder.language || "").toLowerCase();
+    const genres = naturalGenrePhrase(queryBuilder.genres);
+    const subject = [mood, language, genres].filter(Boolean).join(" ") || "movies";
+    const releaseTime = queryBuilder.time.toLowerCase();
+    if (discoveryMode === "streaming") return `Find ${releaseTime ? `the ${releaseTime} ` : ""}${subject} with verified streaming availability in India.`;
+    if (discoveryMode === "theatrical") return `Show ${releaseTime ? `the ${releaseTime} ` : "the latest "}${subject}.`;
+    return subject !== "movies" || releaseTime ? `Show ${releaseTime ? `the ${releaseTime} ` : ""}${subject}.` : "";
+}
+
+function naturalGenrePhrase(genres) {
+    const terms = asArray(genres)
+        .slice()
+        .sort((left, right) => GENRE_ORDER.indexOf(left) - GENRE_ORDER.indexOf(right))
+        .map(value => String(value).toLowerCase());
+    if (!terms.length) return "movies";
+    if (terms.length === 2 && terms[0] === "romance" && terms[1] === "comedy") return "romantic comedies";
+    const last = terms.at(-1);
+    const pluralLast = { thriller: "thrillers", comedy: "comedies", drama: "dramas" }[last];
+    return pluralLast ? [...terms.slice(0, -1), pluralLast].join(" ") : `${terms.join(" ")} movies`;
+}
+
+function renderQueryBuilder() {
+    const sentence = buildQuerySentence();
+    if (!queryBuilderSentence) return;
+    queryBuilderSentence.textContent = sentence || "Choose a language, genre, or release time to build your sentence.";
+}
 
 async function handleRecommendationSubmit(event) {
     event.preventDefault();
     const text = input?.value.trim() || "";
     if (!text) return renderError("Please describe what kind of movie you want.");
+    const requestText = discoveryRequestText(text);
     activeRequest?.abort();
     const request = new AbortController();
     activeRequest = request;
@@ -55,7 +208,7 @@ async function handleRecommendationSubmit(event) {
     window.MovieAISearchIcon?.setLoading(recommendationSearchIcon, true);
     renderLoading();
     try {
-        const endpoint = recommendationEndpoint(text);
+        const endpoint = recommendationEndpoint(requestText);
         console.log("[MovieAI] recommendation endpoint:", endpoint);
         const response = await fetch(endpoint, { headers: { Accept: "application/json" }, signal: request.signal });
         const data = await response.json();
@@ -63,7 +216,7 @@ async function handleRecommendationSubmit(event) {
         console.log("[MovieAI] result count:", data.results?.length);
         if (!response.ok) throw { status: response.status, data };
         if (!Array.isArray(data.results)) return renderError("No recommendation results were returned.");
-        if (!data.results.length) return renderEmpty();
+        if (!data.results.length) return renderEmpty(data);
         renderResults(data);
     } catch (error) {
         if (error?.name !== "AbortError") handleAPIError(error);
@@ -87,14 +240,20 @@ function recommendationEndpoint(text) {
     const title = similarityMatch?.[1]?.trim() || (isDirectTitle(text) ? text : null);
     return title ? `${API_BASE}/recommend?title=${encodeURIComponent(title)}` : `${API_BASE}/recommend-text?text=${encodedText}`;
 }
+function discoveryRequestText(text) {
+    if (discoveryMode === "catalog") return text;
+    const liveText = LATEST_DISCOVERY_PATTERN.test(text) ? text : `latest ${text}`;
+    return discoveryMode === "streaming" && !OTT_DISCOVERY_PATTERN.test(liveText) ? `${liveText} available on OTT in India` : liveText;
+}
 function isDirectTitle(text) { return text.split(/\s+/).length <= 7 && !NATURAL_LANGUAGE_WORDS.test(text); }
 
 function renderLoading() {
     if (!resultsContainer) return;
     resultsContainer.innerHTML = `<div class="recommendation-results-heading"><span>YOUR MOVIE PICKS</span><h2>Finding your movies</h2></div>${window.MovieAILoader.inline("Reading your mood…")}<div class="recommendation-loading-skeletons" aria-hidden="true"><div></div><div></div><div></div></div>`;
 }
-function renderEmpty() {
+function renderEmpty(data = {}) {
     if (!resultsContainer) return;
+    if (data.mode === "LATEST_OTT") return renderError("No verified streaming matches are available right now. We did not replace them with theatrical releases.");
     const actions = [
         { label: "Latest Telugu action", query: "Latest Telugu action movies" },
         { label: "Feel-good comedy", query: "Feel-good Indian comedy movies" },
@@ -106,7 +265,11 @@ function renderError(message) { if (resultsContainer) resultsContainer.innerHTML
 
 function renderResults(data) {
     resultsContainer.innerHTML = "";
-    const heading = document.createElement("div"); heading.className = "recommendation-results-heading"; heading.innerHTML = "<span>YOUR MOVIE PICKS</span><h2>Movies for your mood</h2>"; resultsContainer.appendChild(heading);
+    const streaming = data.mode === "LATEST_OTT";
+    const heading = document.createElement("div"); heading.className = "recommendation-results-heading"; heading.innerHTML = `<span>${streaming ? "STREAMING PICKS" : "YOUR MOVIE PICKS"}</span><h2>${streaming ? "Streaming now in India" : "Movies for your mood"}</h2>`; resultsContainer.appendChild(heading);
+    const sourceNote = document.createElement("p"); sourceNote.className = "recommendation-source-note";
+    sourceNote.textContent = streaming ? "Verified streaming availability in India. Platforms appear on each movie." : data.mode === "LATEST" ? "Recent theatrical releases matching your request." : data.local_fallback_used ? "Catalog matches based on your request." : "Movie matches based on your request.";
+    resultsContainer.appendChild(sourceNote);
     const parts = [...asArray(data.intent?.genres), ...asArray(data.intent?.languages).map(displayLanguage)];
     if (data.intent?.mood) parts.push(String(data.intent.mood).replace(/_/g, " "));
     if (data.intent?.audience) parts.push(data.intent.audience);

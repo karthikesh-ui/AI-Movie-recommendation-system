@@ -34,6 +34,15 @@ class TMDBClientTests(unittest.TestCase):
         self.assertEqual(params["region"], "IN")
         self.assertEqual(params["sort_by"], "primary_release_date.desc")
 
+    def test_discovery_accepts_multiple_genres_as_an_and_filter(self):
+        get = Mock(return_value=response(200, {"page": 1, "results": []}))
+        result = self.client(get).discover_movies(
+            genre_id=[28, 53], original_language="te", region="IN",
+            release_date_start="2026-07-01", release_date_end="2026-10-01",
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(get.call_args.kwargs["params"]["with_genres"], "28,53")
+
     def test_environment_token_is_loaded_without_legacy_key_fallback(self):
         get = Mock(return_value=response(200, {"genres": []}))
         with patch.dict(os.environ, {"TMDB_API_READ_ACCESS_TOKEN": "eyJenv-token", "TMDB_API_KEY": "legacy-key"}, clear=False):
