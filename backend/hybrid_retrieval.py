@@ -287,11 +287,13 @@ def retrieve_hybrid(*, text: str, title: str | None, region: str, limit: int, in
                     recommendation_source=source, provider_status=tmdb_outcome.provider_status,
                     discovery={"provider": "tmdb", "status": tmdb_outcome.status, "query_supported": tmdb_outcome.query_supported},
                 )
-            for candidate in candidates:
-                candidate.freshness_status = "local_catalog_no_verified_release_date"
+            limitation = tmdb_outcome.limitation
+            if limitation and "local catalog fallback" in limitation.casefold():
+                limitation = "TMDB discovery is unavailable; no local catalog fallback is used for latest results."
             return _response(
-                mode, text, intent, candidates, local_fallback_used=True,
-                freshness="local_catalog_only", limitation=tmdb_outcome.limitation or "TMDB returned no verified recent candidates; using the local catalog fallback.",
+                mode, text, intent, [], local_fallback_used=False,
+                freshness="not_verified",
+                limitation=limitation or "TMDB returned no verified recent candidates; no local catalog fallback is used for latest results.",
                 recommendation_source=source, provider_status=tmdb_outcome.provider_status,
                 discovery={"provider": "tmdb", "status": tmdb_outcome.status, "query_supported": tmdb_outcome.query_supported},
             )
